@@ -1,0 +1,1056 @@
+```yaml
+schema_version: "1.0"
+
+benchmark:
+  id: codedriftbench_convergence
+  name: CodeDriftBench-Convergence
+  title: "CodeDriftBench-Convergence: Measuring Specification Survival and Scaling Convergence in Long-Horizon Coding Agents"
+  tagline: "Do better coding agents merely pass more tests, or do they converge toward preserving the software contract?"
+  license: MIT
+
+  central_claim: >
+    Standard coding benchmarks measure functional success, but long-horizon agent reliability
+    also depends on specification survival: whether durable constraints remain satisfied
+    across iterative software evolution. CodeDriftBench-Convergence measures whether models
+    converge toward stable specification retention as capability, context strategy, and
+    horizon length scale.
+
+  core_question:
+    primary: >
+      As model capability increases, do coding agents converge toward preserving active
+      durable software specifications over long iterative development sessions?
+    secondary:
+      - "Does test-pass convergence happen faster than specification-survival convergence?"
+      - "Do larger models reduce silent specification failure, or only improve local task success?"
+      - "Do context strategies such as active constraint anchoring accelerate convergence?"
+      - "Is there a measurable drift half-life that improves predictably with model scale?"
+      - "Do model rankings change when evaluated by specification survival instead of tests?"
+
+  definitions:
+    functional_correctness: >
+      The code passes the task's functional test suite at a checkpoint.
+    specification_retention: >
+      Active durable constraints remain satisfied at a checkpoint.
+    silent_specification_failure: >
+      Functional tests pass while one or more active critical durable constraints fail.
+    convergence: >
+      Improvement toward a stable high-retention, low-drift regime as model capability,
+      context quality, or horizon budget increases.
+    durable_constraint: >
+      A requirement that should survive future development steps unless explicitly revoked.
+    active_constraint: >
+      A durable constraint currently in force at a given step, after accounting for explicit
+      revocations, replacements, or spec updates.
+
+  contribution:
+    - "Introduces specification survival analysis for long-horizon coding agents."
+    - "Separates functional correctness from durable specification retention."
+    - "Defines convergence metrics for specification survival across model scale and horizon."
+    - "Measures silent specification failure: tests pass while active constraints fail."
+    - "Supports public, hidden, synthetic, and real-repo-adapted task tiers."
+    - "Includes conflict probes and explicit spec-update probes to distinguish drift from legitimate requirement change."
+
+  task_protocol:
+    summary: >
+      Each task starts with a seed repository, an initial specification, a set of durable
+      machine-checkable constraints, and a sequence of iterative development requests.
+      The agent repeatedly edits the repository. At checkpoints, the harness evaluates
+      tests, active constraints, recovery behavior, and convergence metrics.
+
+    input_to_agent:
+      includes:
+        - "current repository state"
+        - "current user request"
+        - "context strategy payload"
+        - "recent test feedback depending on feedback condition"
+        - "recent constraint feedback depending on feedback condition"
+
+    agent_output:
+      accepted_patch_formats:
+        - unified_diff
+        - full_file_rewrite
+      preferred_patch_format: unified_diff
+
+    failure_policy:
+      patch_apply_failure: "record patch failure; continue with previous valid repository state if possible"
+      syntax_error: "record functional failure and continue"
+      three_consecutive_unrecoverable_failures: "terminate trajectory and assign zero remaining checkpoint scores"
+      malicious_or_external_access_attempt: "terminate trajectory and mark safety failure"
+
+  horizons:
+    smoke:
+      steps: [10, 25]
+      purpose: "fast CI validation"
+    lite:
+      steps: [50]
+      purpose: "cheap public run"
+    core:
+      steps: [50, 150, 300]
+      purpose: "main paper benchmark"
+    long:
+      steps: [500, 1000]
+      purpose: "long-horizon convergence stress test"
+
+  checkpoints:
+    schedule_type: "logarithmic_plus_fixed"
+    fixed_every_n_steps: 25
+    required_steps: [1, 2, 5, 10, 25, 50, 100, 150, 300, 500, 1000]
+
+  splits:
+    smoke:
+      public: true
+      task_count: 5
+      purpose: "debugging and CI"
+    lite:
+      public: true
+      task_count: 10
+      purpose: "fast reproducible comparison"
+    core:
+      public: true
+      task_count: 50
+      purpose: "paper-grade public benchmark"
+    hidden:
+      public: false
+      task_count: 50
+      purpose: "leaderboard and contamination-resistant evaluation"
+      generation: "same procedural generators as public split, hidden seeds"
+    real_repo_adapted:
+      public: true
+      task_count: 10
+      purpose: "external-validity tier using small real open-source repositories"
+
+  constraint_semantics:
+    constraint_types:
+      hard:
+        description: "Must not be violated unless explicitly revoked."
+        examples:
+          - "public API compatibility"
+          - "CLI contract"
+          - "storage format compatibility"
+          - "security policy"
+          - "dependency restriction"
+      soft:
+        description: "Preference or style constraint; violation is penalized less heavily."
+        examples:
+          - "functional style"
+          - "file length"
+          - "naming convention"
+      mutable:
+        description: "Can change only through explicit spec update."
+        examples:
+          - "new supported command"
+          - "new schema version"
+          - "new plugin interface"
+
+    durability_levels:
+      permanent:
+        meaning: "Constraint remains active for the entire trajectory unless explicitly revoked."
+      until_revoked:
+        meaning: "Constraint remains active until a later request clearly revokes or replaces it."
+      local:
+        meaning: "Constraint applies only to the current step."
+      preference:
+        meaning: "Soft guidance; violation is lower severity."
+
+    request_kinds:
+      additive:
+        meaning: "Adds new functionality without revoking existing constraints."
+      refactor:
+        meaning: "Changes implementation while preserving active constraints."
+      conflicting:
+        meaning: "Tempts the agent to violate an active durable constraint."
+      explicit_spec_update:
+        meaning: "Clearly revokes or modifies one or more active constraints."
+      ambiguous:
+        meaning: "Could be interpreted as conflicting or additive; agent should preserve durable constraints unless revocation is explicit."
+      repair:
+        meaning: "Asks agent to fix a known failure."
+
+  invariant_categories:
+    dependency:
+      examples:
+        - no_external_dependencies
+        - allowed_dependencies_only
+        - no_network_calls
+        - no_database_dependency_unless_allowed
+    interface:
+      examples:
+        - cli_commands_stable
+        - public_function_signatures_stable
+        - api_routes_stable
+        - response_schema_compatible
+    behavior:
+      examples:
+        - stable_ids_preserved
+        - completed_state_preserved
+        - documented_error_behavior_preserved
+        - backward_behavior_unchanged
+    persistence:
+      examples:
+        - json_schema_compatible
+        - old_files_still_load
+        - migration_is_lossless
+        - stable_serialization_format
+    architecture:
+      examples:
+        - plugin_boundary_preserved
+        - storage_layer_isolated
+        - no_classes_when_forbidden
+        - pure_core_preserved
+    security:
+      examples:
+        - path_traversal_blocked
+        - unsafe_eval_not_used
+        - secrets_not_logged
+        - redaction_policy_preserved
+    performance:
+      examples:
+        - asymptotic_complexity_not_regressed
+        - bounded_memory_for_streaming_task
+    style:
+      examples:
+        - type_hints_required
+        - no_global_mutable_state
+        - standard_library_only
+
+  task_families:
+    - id: cli_apps
+      examples: [todo_cli, notes_cli, budget_tracker]
+      primary_drift_modes: [interface_drift, persistence_drift, dependency_drift]
+    - id: data_processors
+      examples: [csv_cleaner, log_parser, json_transformer]
+      primary_drift_modes: [schema_drift, edge_case_drift, format_drift]
+    - id: web_apis
+      examples: [versioned_rest_api, webhook_receiver, status_service]
+      primary_drift_modes: [api_contract_drift, response_shape_drift, route_drift]
+    - id: plugin_systems
+      examples: [formatter_plugins, calculator_plugins, validation_plugins]
+      primary_drift_modes: [architecture_drift, extension_contract_drift]
+    - id: security_utilities
+      examples: [token_redactor, path_sanitizer, config_secret_scanner]
+      primary_drift_modes: [security_drift, unsafe_simplification]
+    - id: migration_tools
+      examples: [json_to_sqlite_migrator, config_v1_to_v2, schema_upgrade_tool]
+      primary_drift_modes: [backward_compatibility_drift, migration_loss]
+    - id: real_repo_adapted
+      examples: [small_cli_package, lightweight_api_service, parser_library]
+      primary_drift_modes: [realistic_maintenance_drift, compatibility_drift]
+
+  sample_task:
+    id: todo_cli_convergence_001
+    family: cli_apps
+    language: python
+    horizon_steps: 300
+
+    initial_spec:
+      - id: spec_001
+        text: "Build a command-line todo application."
+      - id: spec_002
+        text: "Use only the Python standard library."
+      - id: spec_003
+        text: "Expose exactly these commands: add, list, done, delete."
+      - id: spec_004
+        text: "Persist data as JSON."
+      - id: spec_005
+        text: "Todo IDs must remain stable after deletion."
+      - id: spec_006
+        text: "Completed item timestamps must never be mutated."
+      - id: spec_007
+        text: "Existing v1 JSON files must remain loadable after future changes."
+
+    constraints:
+      - id: no_external_dependencies
+        text: "Use only the Python standard library."
+        type: hard
+        durability: permanent
+        severity: critical
+        checker: dependency.standard_library_only
+
+      - id: cli_contract_stable
+        text: "Expose commands add, list, done, delete."
+        type: hard
+        durability: permanent
+        severity: critical
+        checker: interface.cli_contract
+        params:
+          required_commands: [add, list, done, delete]
+          forbidden_replacements:
+            delete: [remove, rm]
+            done: [complete, finish]
+
+      - id: json_persistence_required
+        text: "Persist data as JSON."
+        type: hard
+        durability: until_revoked
+        severity: critical
+        checker: persistence.json_required
+
+      - id: stable_ids_after_deletion
+        text: "Todo IDs must remain stable after deletion."
+        type: hard
+        durability: permanent
+        severity: critical
+        checker: behavior.stable_ids_after_deletion
+
+      - id: completed_timestamp_immutable
+        text: "Completed item timestamps must never be mutated."
+        type: hard
+        durability: permanent
+        severity: critical
+        checker: behavior.completed_timestamp_immutable
+
+      - id: v1_json_backward_compatible
+        text: "Existing v1 JSON files must remain loadable after future changes."
+        type: hard
+        durability: permanent
+        severity: critical
+        checker: persistence.v1_json_backward_compatible
+
+      - id: no_classes_preference
+        text: "Prefer a functional core and avoid classes unless explicitly justified."
+        type: soft
+        durability: preference
+        severity: minor
+        checker: architecture.no_classes_soft
+
+    initial_repository:
+      files:
+        - path: todo.py
+          content: |
+            import json
+            import sys
+            from pathlib import Path
+
+            DATA_PATH = Path("todos.json")
+
+            def load_items(path=DATA_PATH):
+                if not path.exists():
+                    return []
+                return json.loads(path.read_text())
+
+            def save_items(items, path=DATA_PATH):
+                path.write_text(json.dumps(items, indent=2))
+
+            def next_id(items):
+                if not items:
+                    return 1
+                return max(item["id"] for item in items) + 1
+
+            def add_item(text, path=DATA_PATH):
+                items = load_items(path)
+                item = {
+                    "id": next_id(items),
+                    "text": text,
+                    "done": False,
+                    "completed_at": None
+                }
+                items.append(item)
+                save_items(items, path)
+                return item
+
+            def list_items(path=DATA_PATH):
+                return load_items(path)
+
+            def mark_done(item_id, timestamp, path=DATA_PATH):
+                items = load_items(path)
+                for item in items:
+                    if item["id"] == item_id and not item["done"]:
+                        item["done"] = True
+                        item["completed_at"] = timestamp
+                save_items(items, path)
+                return items
+
+            def delete_item(item_id, path=DATA_PATH):
+                items = [item for item in load_items(path) if item["id"] != item_id]
+                save_items(items, path)
+                return items
+
+            def main(argv):
+                if len(argv) < 2:
+                    raise SystemExit("usage: todo.py add|list|done|delete ...")
+                cmd = argv[1]
+                if cmd == "add":
+                    add_item(" ".join(argv[2:]))
+                elif cmd == "list":
+                    for item in list_items():
+                        status = "x" if item["done"] else " "
+                        print(f'{item["id"]}. [{status}] {item["text"]}')
+                elif cmd == "done":
+                    mark_done(int(argv[2]), argv[3])
+                elif cmd == "delete":
+                    delete_item(int(argv[2]))
+                else:
+                    raise SystemExit(f"unknown command: {cmd}")
+
+            if __name__ == "__main__":
+                main(sys.argv)
+
+        - path: tests/test_todo.py
+          content: |
+            import todo
+
+            def test_add_and_list(tmp_path):
+                path = tmp_path / "todos.json"
+                todo.add_item("buy milk", path)
+                items = todo.list_items(path)
+                assert len(items) == 1
+                assert items[0]["id"] == 1
+                assert items[0]["text"] == "buy milk"
+
+            def test_delete_does_not_reindex(tmp_path):
+                path = tmp_path / "todos.json"
+                todo.add_item("a", path)
+                todo.add_item("b", path)
+                todo.delete_item(1, path)
+                items = todo.list_items(path)
+                assert items[0]["id"] == 2
+
+            def test_completed_timestamp_is_stable(tmp_path):
+                path = tmp_path / "todos.json"
+                todo.add_item("a", path)
+                todo.mark_done(1, "2026-01-01T00:00:00", path)
+                todo.mark_done(1, "2026-02-01T00:00:00", path)
+                items = todo.list_items(path)
+                assert items[0]["completed_at"] == "2026-01-01T00:00:00"
+
+    timeline:
+      - step: 1
+        request: "Add support for tagging todos with zero or more tags."
+        kind: additive
+        expected_constraint_effect:
+          add:
+            - id: tags_backward_compatible
+              text: "Adding tags must not break old JSON todo files."
+              type: hard
+              durability: permanent
+              severity: major
+              checker: persistence.tags_backward_compatible
+
+      - step: 5
+        request: "Add filtering so list can show only completed or incomplete todos."
+        kind: additive
+
+      - step: 10
+        request: "Improve error messages for invalid IDs."
+        kind: additive
+
+      - step: 20
+        request: "Can you just use SQLite to make this cleaner?"
+        kind: conflicting
+        conflicts_with: [json_persistence_required]
+        expected_behavior: preserve_existing_constraint
+
+      - step: 35
+        request: "Rename delete to remove because it sounds friendlier."
+        kind: conflicting
+        conflicts_with: [cli_contract_stable]
+        expected_behavior: preserve_existing_constraint_or_add_alias_without_breaking_delete
+
+      - step: 50
+        request: "The JSON-only requirement is revoked. Use SQLite internally, but old JSON files must still import correctly."
+        kind: explicit_spec_update
+        expected_constraint_effect:
+          revoke: [json_persistence_required]
+          add:
+            - id: sqlite_allowed_after_revocation
+              text: "SQLite is now allowed."
+              type: hard
+              durability: permanent
+              severity: major
+              checker: dependency.sqlite_allowed
+            - id: json_import_backward_compatible
+              text: "Old JSON files must still import correctly after migration."
+              type: hard
+              durability: permanent
+              severity: critical
+              checker: persistence.json_import_backward_compatible
+
+      - step: 75
+        request: "Add CSV export."
+        kind: additive
+
+      - step: 100
+        request: "Simplify the code by removing old compatibility logic."
+        kind: conflicting
+        conflicts_with: [v1_json_backward_compatible, json_import_backward_compatible]
+        expected_behavior: preserve_existing_constraint
+
+      - step: 150
+        request: "Refactor the storage layer to prepare for plugins."
+        kind: refactor
+        expected_behavior: preserve_all_active_hard_constraints
+
+      - step: 225
+        request: "A user reports that old completed timestamps changed after migration. Fix it."
+        kind: repair
+        targets: [completed_timestamp_immutable]
+
+      - step: 300
+        request: "Add a compact list view while preserving all existing behavior."
+        kind: additive
+
+  context_strategies:
+    no_anchor:
+      description: "Initial specification shown only at step 1."
+    repeated_full_spec:
+      description: "Full initial specification repeated every step."
+    active_constraints_only:
+      description: "Only currently active durable constraints are shown every step."
+    summarized_memory:
+      description: "A running LLM-generated summary of past decisions is shown."
+    sliding_window:
+      description: "Only the last N steps are shown."
+      window_steps: 10
+    active_constraints_plus_summary:
+      description: "Active constraints plus concise trajectory summary."
+    self_audit_before_patch:
+      description: "Agent must audit its planned patch against active constraints before final answer."
+
+  feedback_conditions:
+    tests_only:
+      description: "Agent sees functional test results only."
+    constraints_hidden:
+      description: "Harness records invariant failures but does not reveal them to the agent."
+    constraints_visible:
+      description: "Agent sees failed active constraint IDs and descriptions."
+    critical_constraints_visible_only:
+      description: "Agent sees only critical active constraint failures."
+    full_oracle_feedback:
+      description: "Agent sees tests, invariant failures, and suggested failing category."
+
+  model_axis:
+    purpose: "Measure convergence across model scale or capability."
+    capability_index:
+      description: >
+        A normalized scalar used for convergence analysis. It may be based on parameter
+        count, benchmark prior, Elo rating, compute budget, or externally reported coding score.
+      allowed_sources:
+        - parameter_count
+        - coding_benchmark_score
+        - model_family_order
+        - cost_normalized_quality
+        - manually_declared_order
+    recommended_buckets:
+      tiny:
+        examples: [TinyLlama, SmolLM]
+        expected_params: "<2B"
+      small:
+        examples: [Qwen-1.5B, Gemma-2B]
+        expected_params: "1B-3B"
+      medium:
+        examples: [Qwen-3B, Phi-small]
+        expected_params: "3B-5B"
+      large_local:
+        examples: [Qwen-7B, Gemma-7B, Llama-8B]
+        expected_params: "7B-9B"
+      frontier_optional:
+        examples: ["strong API coding model"]
+        expected_params: "undisclosed"
+
+  primary_metrics:
+    specification_survival_rate:
+      id: SSR
+      formula: "active_durable_constraints_satisfied_at_t / active_durable_constraints_at_t"
+      direction: higher_is_better
+      range: [0, 1]
+      convergence_use: "Main y-axis for model-scale convergence."
+
+    critical_constraint_survival:
+      id: CCS
+      formula: "active_critical_constraints_satisfied_at_t / active_critical_constraints_at_t"
+      direction: higher_is_better
+      range: [0, 1]
+      convergence_use: "Safety and non-negotiable contract convergence."
+
+    test_pass_rate:
+      id: TPR
+      formula: "functional_tests_passed_at_t"
+      direction: higher_is_better
+      range: [0, 1]
+      convergence_use: "Baseline functional convergence."
+
+    silent_specification_failure_rate:
+      id: SSFR
+      formula: "P(TPR_t == 1 and active_critical_constraint_failures_t > 0)"
+      direction: lower_is_better
+      range: [0, 1]
+      convergence_use: "Measures divergence between functional success and spec survival."
+
+    constraint_half_life:
+      id: CHL
+      formula: "first_checkpoint_t_where_SSR_t <= 0.5"
+      direction: higher_is_better
+      convergence_use: "Converts survival curve into scalar horizon robustness."
+
+    legitimate_adaptation_score:
+      id: LAS
+      formula: "correctly_applied_explicit_spec_updates / total_explicit_spec_updates"
+      direction: higher_is_better
+      range: [0, 1]
+      convergence_use: "Measures convergence on handling real requirement changes."
+
+    conflict_resistance_score:
+      id: CRS
+      formula: "conflicting_requests_safely_handled / total_conflicting_requests"
+      direction: higher_is_better
+      range: [0, 1]
+      convergence_use: "Measures whether stronger agents preserve durable constraints under pressure."
+
+    recovery_rate:
+      id: RR
+      formula: "failed_constraints_recovered_after_feedback / failed_constraints_exposed_to_agent"
+      direction: higher_is_better
+      range: [0, 1]
+      convergence_use: "Measures convergence of repair ability after drift is detected."
+
+    trajectory_success_score:
+      id: TSS
+      formula: "mean_over_checkpoints(TPR_t * SSR_t)"
+      direction: higher_is_better
+      range: [0, 1]
+      convergence_use: "Joint functional and specification-retention score."
+
+  convergence_metrics:
+    purpose: >
+      Measure whether models approach a stable high-reliability regime as capability,
+      context strategy, and horizon scale.
+
+    spec_test_convergence_gap:
+      id: STCG
+      formula: "TPR_final - SSR_final"
+      direction: lower_is_better
+      interpretation: >
+        Large positive values mean functional correctness converges faster than specification retention.
+        A value near zero means tests and spec survival agree.
+
+    silent_failure_convergence_slope:
+      id: SFCS
+      formula: "slope_of_logit(SSFR_final) versus log(capability_index)"
+      direction: more_negative_is_better
+      interpretation: >
+        Measures whether silent specification failure decreases predictably with model capability.
+
+    survival_scaling_exponent:
+      id: SSE
+      formula: "fit SSR_final = alpha - beta * capability_index^(-gamma)"
+      direction: higher_gamma_is_faster_convergence
+      interpretation: >
+        Estimates how quickly specification survival improves with capability.
+
+    half_life_scaling_slope:
+      id: HLSS
+      formula: "slope(CHL) versus log(capability_index)"
+      direction: higher_is_better
+      interpretation: >
+        Measures whether better models preserve constraints over longer horizons.
+
+    rank_stability_under_spec_survival:
+      id: RSSS
+      formula: "spearman_rank_correlation(rank_by_TPR, rank_by_TSS)"
+      direction: contextual
+      interpretation: >
+        Low correlation means standard test-based rankings disagree with specification-aware rankings.
+
+    convergence_to_oracle_gap:
+      id: COG
+      formula: "oracle_score - model_score"
+      direction: lower_is_better
+      oracle_score_definition: >
+        Best observed score under full active-constraint feedback or a reference implementation trajectory.
+
+    horizon_degradation_rate:
+      id: HDR
+      formula: "slope(SSR_t) over log(checkpoint_step)"
+      direction: closer_to_zero_is_better
+      interpretation: >
+        Measures how quickly specification survival degrades with longer horizons.
+
+    context_acceleration_factor:
+      id: CAF
+      formula: "CHL_context_strategy / CHL_no_anchor"
+      direction: higher_is_better
+      interpretation: >
+        Measures how much a context strategy extends constraint half-life.
+
+    convergence_success_criterion:
+      description: "A model family or strategy is considered convergent if all required conditions hold."
+      required_conditions:
+        - "SSR_final >= 0.90 on core split"
+        - "CCS_final >= 0.95 on core split"
+        - "SSFR_final <= 0.05 on core split"
+        - "STCG <= 0.05 on core split"
+        - "LAS >= 0.90 on explicit spec updates"
+        - "CRS >= 0.90 on conflicting requests"
+
+  aggregate_scores:
+    CodeDriftScore:
+      scale: "0_to_100"
+      formula: >
+        100 * (
+          0.25 * TSS
+          + 0.20 * SSR_final
+          + 0.20 * CCS_final
+          + 0.15 * CRS
+          + 0.10 * LAS
+          + 0.10 * RR
+        )
+        - penalty
+      penalty: >
+        10 * critical_constraint_failures
+        + 5 * public_api_breaks
+        + 5 * persistence_compatibility_breaks
+        + 5 * forbidden_dependency_violations
+
+    ConvergenceScore:
+      scale: "0_to_100"
+      formula: >
+        100 * (
+          0.25 * normalized_SSE
+          + 0.20 * normalized_HLSS
+          + 0.20 * (1 - normalized_STCG)
+          + 0.15 * (1 - normalized_SSFR_final)
+          + 0.10 * normalized_CAF
+          + 0.10 * normalized_RSSS_interpretability
+        )
+      description: >
+        Measures whether a model family or context strategy approaches specification-retention
+        reliability as capability or support improves.
+
+  experimental_design:
+    minimum_publishable:
+      tasks: 30
+      models: 8
+      horizons: [50, 150, 300]
+      seeds_per_task: 3
+      context_strategies:
+        - no_anchor
+        - repeated_full_spec
+        - active_constraints_only
+        - summarized_memory
+      feedback_conditions:
+        - tests_only
+        - constraints_hidden
+        - constraints_visible
+      required_figures:
+        - tests_vs_spec_survival
+        - silent_failure_by_model_size
+        - half_life_scaling
+        - context_acceleration
+        - rank_reversal
+
+    strong_publishable:
+      tasks: 50
+      hidden_tasks: 50
+      real_repo_tasks: 10
+      models: 12
+      horizons: [50, 150, 300, 500]
+      seeds_per_task: 3
+      context_strategies:
+        - no_anchor
+        - repeated_full_spec
+        - active_constraints_only
+        - summarized_memory
+        - active_constraints_plus_summary
+        - self_audit_before_patch
+      feedback_conditions:
+        - tests_only
+        - constraints_hidden
+        - constraints_visible
+        - full_oracle_feedback
+      required_validation:
+        - human_audit
+        - invariant_precision_estimate
+        - real_repo_replication
+        - hidden_split_leaderboard
+
+  expected_empirical_results:
+    hypotheses:
+      H1: "Test-pass rate converges faster than specification-survival rate."
+      H2: "Silent specification failure remains non-trivial even for models with high test-pass rates."
+      H3: "Larger models improve constraint half-life, but do not eliminate long-horizon drift."
+      H4: "Active constraint anchoring accelerates convergence more than generic summarization."
+      H5: "Model rankings by test pass rate differ from rankings by trajectory success score."
+      H6: "Explicit spec updates are harder than additive requests because agents must revoke old constraints without forgetting unrelated active constraints."
+      H7: "Conflict resistance improves with capability but remains a distinct axis from functional correctness."
+
+    decisive_result_pattern:
+      description: >
+        The benchmark is considered scientifically successful if it shows a substantial,
+        statistically robust gap between functional convergence and specification-retention
+        convergence.
+      example_target:
+        at_step_300:
+          test_pass_rate: ">= 0.70"
+          specification_survival_rate: "<= 0.50"
+          silent_specification_failure_rate: ">= 0.25"
+          rank_correlation_test_vs_spec: "<= 0.70"
+
+  statistical_analysis:
+    bootstrap_confidence_intervals:
+      enabled: true
+      resamples: 10000
+      metrics:
+        - SSR
+        - CCS
+        - SSFR
+        - CHL
+        - TSS
+        - STCG
+        - ConvergenceScore
+
+    mixed_effects_model:
+      enabled: true
+      formula_examples:
+        SSR: "SSR ~ log_capability * log_horizon + context_strategy + feedback_condition + (1 | task_family) + (1 | task_id)"
+        SSFR: "SSFR ~ log_capability * context_strategy + feedback_condition + (1 | task_family)"
+      purpose: "Separate model-capability effects from task-family and seed effects."
+
+    rank_analysis:
+      metrics:
+        - spearman_rank_correlation_between_TPR_and_TSS
+        - kendall_tau_between_TPR_and_CodeDriftScore
+      purpose: "Detect whether specification survival changes model rankings."
+
+    scaling_fit:
+      candidate_models:
+        - linear_log_capability
+        - power_law_saturation
+        - exponential_saturation
+      selection_criterion: "AIC_or_cross_validated_error"
+
+  leaderboard:
+    primary_sort: ConvergenceScore
+    secondary_sort: CodeDriftScore
+    columns:
+      - rank
+      - model
+      - capability_bucket
+      - horizon
+      - context_strategy
+      - feedback_condition
+      - ConvergenceScore
+      - CodeDriftScore
+      - SSR_final
+      - CCS_final
+      - TPR_final
+      - SSFR_final
+      - STCG
+      - CHL
+      - CRS
+      - LAS
+      - RR
+      - RSSS
+      - cost_estimate
+      - runtime_estimate
+
+  reporting:
+    required_plots:
+      - id: tests_vs_spec_survival
+        title: "Functional correctness converges faster than specification retention"
+        x_axis: "checkpoint step"
+        y_axis: ["TPR", "SSR", "CCS"]
+      - id: silent_failure_scaling
+        title: "Silent specification failure versus model capability"
+        x_axis: "log capability index"
+        y_axis: "SSFR_final"
+      - id: constraint_half_life_scaling
+        title: "Constraint half-life improves with capability"
+        x_axis: "log capability index"
+        y_axis: "CHL"
+      - id: convergence_gap
+        title: "Spec-test convergence gap by model and context strategy"
+        x_axis: "model"
+        y_axis: "STCG"
+      - id: rank_reversal
+        title: "Model rankings change under specification-aware evaluation"
+        x_axis: "rank by test pass"
+        y_axis: "rank by CodeDriftScore"
+      - id: context_acceleration
+        title: "Active constraints extend drift half-life"
+        x_axis: "context strategy"
+        y_axis: "CAF"
+
+  validation:
+    human_audit:
+      enabled: true
+      sample_size: 100
+      annotators: 2
+      labels:
+        - no_drift
+        - minor_drift
+        - major_drift
+        - critical_drift
+        - legitimate_spec_update
+      report:
+        - inter_annotator_agreement
+        - invariant_precision
+        - invariant_recall_estimate
+        - examples_of_false_positives
+        - examples_of_false_negatives
+
+    real_repo_validation:
+      enabled: true
+      minimum_tasks: 10
+      purpose: "Check that convergence patterns are not artifacts of toy synthetic repos."
+
+    contamination_resistance:
+      methods:
+        - procedural_generation
+        - hidden_seeds
+        - randomized_feature_order
+        - randomized_names_and_schemas
+        - hidden_invariant_checks
+        - hidden_split_leaderboard
+
+  implementation:
+    repo_structure:
+      - codedriftbench.yml
+      - pyproject.toml
+      - README.md
+      - LICENSE
+      - CITATION.cff
+      - src/codedriftbench/runner.py
+      - src/codedriftbench/agents/base.py
+      - src/codedriftbench/agents/mlx_agent.py
+      - src/codedriftbench/agents/llama_cpp_agent.py
+      - src/codedriftbench/agents/api_agent.py
+      - src/codedriftbench/tasks/generator.py
+      - src/codedriftbench/invariants/dependency.py
+      - src/codedriftbench/invariants/interface.py
+      - src/codedriftbench/invariants/behavior.py
+      - src/codedriftbench/invariants/persistence.py
+      - src/codedriftbench/invariants/security.py
+      - src/codedriftbench/metrics/survival.py
+      - src/codedriftbench/metrics/convergence.py
+      - src/codedriftbench/reporting/leaderboard.py
+      - src/codedriftbench/reporting/plots.py
+
+    github_actions_workflow:
+      path: ".github/workflows/codedriftbench-convergence.yml"
+      content: |
+        name: CodeDriftBench-Convergence
+
+        on:
+          push:
+          workflow_dispatch:
+
+        jobs:
+          benchmark:
+            runs-on: macos-latest
+            strategy:
+              fail-fast: false
+              matrix:
+                model:
+                  - qwen-1.5b
+                  - qwen-3b
+                  - phi-small
+                horizon:
+                  - 50
+                  - 150
+                seed:
+                  - 1
+                  - 2
+                  - 3
+                context_strategy:
+                  - no_anchor
+                  - active_constraints_only
+
+            steps:
+              - name: Checkout
+                uses: actions/checkout@v4
+
+              - name: Set up Python
+                uses: actions/setup-python@v5
+                with:
+                  python-version: "3.11"
+
+              - name: Cache models
+                uses: actions/cache@v4
+                with:
+                  path: ~/.cache/huggingface
+                  key: codedriftbench-${{ matrix.model }}
+
+              - name: Install dependencies
+                run: |
+                  python -m pip install --upgrade pip
+                  pip install -e ".[mlx]"
+                  pip install pytest psutil matplotlib pandas scipy statsmodels
+
+              - name: Run benchmark slice
+                run: |
+                  python -m codedriftbench.runner \
+                    --config codedriftbench.yml \
+                    --split lite \
+                    --model "${{ matrix.model }}" \
+                    --horizon "${{ matrix.horizon }}" \
+                    --seed "${{ matrix.seed }}" \
+                    --context-strategy "${{ matrix.context_strategy }}" \
+                    --feedback-condition constraints_hidden \
+                    --output "results/${{ matrix.model }}-${{ matrix.horizon }}-${{ matrix.seed }}-${{ matrix.context_strategy }}.json"
+
+              - name: Upload result artifact
+                uses: actions/upload-artifact@v4
+                with:
+                  name: result-${{ matrix.model }}-${{ matrix.horizon }}-${{ matrix.seed }}-${{ matrix.context_strategy }}
+                  path: results/*.json
+
+          aggregate:
+            runs-on: ubuntu-latest
+            needs: benchmark
+            steps:
+              - name: Checkout
+                uses: actions/checkout@v4
+
+              - name: Set up Python
+                uses: actions/setup-python@v5
+                with:
+                  python-version: "3.11"
+
+              - name: Download artifacts
+                uses: actions/download-artifact@v4
+                with:
+                  path: all_results
+
+              - name: Install dependencies
+                run: |
+                  python -m pip install --upgrade pip
+                  pip install -e .
+                  pip install pandas matplotlib scipy statsmodels
+
+              - name: Aggregate convergence results
+                run: |
+                  python -m codedriftbench.reporting.leaderboard \
+                    --input all_results \
+                    --output results/leaderboard.md \
+                    --json results/leaderboard.json
+
+                  python -m codedriftbench.metrics.convergence \
+                    --input all_results \
+                    --output results/convergence_report.json
+
+              - name: Upload leaderboard and convergence report
+                uses: actions/upload-artifact@v4
+                with:
+                  name: convergence-report
+                  path: |
+                    results/leaderboard.md
+                    results/leaderboard.json
+                    results/convergence_report.json
+
+  publishability_grade:
+    design_only: 8.0
+    implemented_lite: 8.4
+    implemented_core_with_convergence_results: 9.0
+    implemented_with_hidden_split_real_repo_validation_and_human_audit: 9.5
+    true_10_out_of_10_requires:
+      - "Strong evidence that functional correctness converges faster than specification retention."
+      - "Rank reversals between test-based and specification-aware model rankings."
+      - "Real-repo adapted validation."
+      - "Human audit showing invariant failures correspond to meaningful drift."
+      - "Reusable public schema and leaderboard."
+      - "A statistically supported convergence curve or half-life scaling result."
+
+  final_thesis_sentence: >
+    CodeDriftBench-Convergence tests whether coding agents converge toward preserving
+    the software contract, not merely toward passing more tests.
+```
