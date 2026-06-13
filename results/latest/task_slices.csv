@@ -1,0 +1,13 @@
+model,model_index,horizon,seed,context_strategy,task_family,ConvergenceScore,SSR_final,CCS_final,SSFR,CHL,TSS,TestPassRate,SilentFailureFinal
+qwen2.5-coder:0.5b,0,5,1,active_constraints,todo_cli,1.0,1.0,1.0,0.0,6.0,1.0,1.0,0.0
+qwen2.5-coder:0.5b,0,5,1,active_constraints,token_redactor,1.0,1.0,1.0,0.0,6.0,1.0,1.0,0.0
+qwen2.5-coder:0.5b,0,5,1,active_constraints,config_parser,1.0,1.0,1.0,0.0,6.0,1.0,1.0,0.0
+qwen2.5-coder:0.5b,0,5,1,no_anchor,todo_cli,1.0,1.0,1.0,0.0,6.0,1.0,1.0,0.0
+qwen2.5-coder:0.5b,0,5,1,no_anchor,token_redactor,1.0,1.0,1.0,0.0,6.0,1.0,1.0,0.0
+qwen2.5-coder:0.5b,0,5,1,no_anchor,config_parser,1.0,1.0,1.0,0.0,6.0,1.0,1.0,0.0
+qwen2.5-coder:1.5b,1,5,1,active_constraints,todo_cli,1.0,1.0,1.0,0.0,6.0,1.0,1.0,0.0
+qwen2.5-coder:1.5b,1,5,1,active_constraints,token_redactor,1.0,1.0,1.0,0.0,6.0,1.0,1.0,0.0
+qwen2.5-coder:1.5b,1,5,1,active_constraints,config_parser,1.0,1.0,1.0,0.0,6.0,1.0,1.0,0.0
+qwen2.5-coder:1.5b,1,5,1,no_anchor,todo_cli,1.0,1.0,1.0,0.0,6.0,1.0,1.0,0.0
+qwen2.5-coder:1.5b,1,5,1,no_anchor,token_redactor,1.0,1.0,1.0,0.0,6.0,1.0,1.0,0.0
+qwen2.5-coder:1.5b,1,5,1,no_anchor,config_parser,1.0,1.0,1.0,0.0,6.0,1.0,1.0,0.0
