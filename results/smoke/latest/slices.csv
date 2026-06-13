@@ -1,0 +1,3 @@
+model,model_index,params_b,family,horizon,seed,context_strategy,CodeDriftScore,SSR_final,CCS_final,SSFR_any,SSFR_critical,CHL,TSS,TestPassRate,ConflictResistance
+baseline:do_nothing,0,0.0,baseline,5,1,active_constraints,1.0,1.0,1.0,0.0,0.0,6.0,1.0,1.0,1.0
+qwen2.5-coder:0.5b,1,0.5,qwen2.5-coder,5,1,active_constraints,1.0,1.0,1.0,0.0,0.0,6.0,1.0,1.0,1.0

@@ -1,0 +1,89 @@
+{
+  "benchmark": "CodeDriftBench-ReproducibleEvaluation",
+  "profile": "smoke",
+  "run_id": "27480458121",
+  "generated_at": "2026-06-13T22:18:44.488294+00:00",
+  "dimensions": {
+    "models": 2,
+    "nonbaseline_models": 1,
+    "horizons": 1,
+    "seeds": 1,
+    "strategies": 1,
+    "tasks": 1,
+    "expected_slices": 2,
+    "observed_slices": 2,
+    "complete": true,
+    "task_slices": 2
+  },
+  "headline": {
+    "mean_CodeDriftScore": 1.0,
+    "mean_SSR_final": 1.0,
+    "mean_TestPassRate": 1.0,
+    "mean_test_spec_gap": 0.0,
+    "test_spec_gap_CI95": [
+      0.0,
+      0.0
+    ],
+    "mean_SSFR_any": 0.0,
+    "mean_SSFR_critical": 0.0,
+    "active_constraints_delta_SSR": NaN,
+    "active_constraints_delta_CI95": [
+      NaN,
+      NaN
+    ],
+    "model_logparam_score_slope_mean": NaN,
+    "mean_ConflictResistance": 1.0
+  },
+  "publishability_gates": {
+    "complete_run": true,
+    "enough_nonbaseline_models": false,
+    "has_baseline": true,
+    "enough_horizons": false,
+    "enough_seeds": false,
+    "enough_tasks": false,
+    "enough_task_slices": false,
+    "has_strategy_ablation": false,
+    "reports_uncertainty": true,
+    "controlled_decoding": true,
+    "has_model_metadata": true,
+    "has_dynamic_feature_tests": true,
+    "has_nontrivial_signal": false
+  },
+  "publishability_grade": "smoke only",
+  "summary": [
+    {
+      "model": "baseline:do_nothing",
+      "params_b": 0.0,
+      "horizon": 5,
+      "context_strategy": "active_constraints",
+      "task_family": "todo_cli",
+      "n": 1,
+      "CodeDriftScore": 1.0,
+      "SSR_final": 1.0,
+      "CCS_final": 1.0,
+      "SSFR_any": 0.0,
+      "SSFR_critical": 0.0,
+      "CHL": 6.0,
+      "TSS": 1.0,
+      "TestPassRate": 1.0,
+      "ConflictResistance": 1.0
+    },
+    {
+      "model": "qwen2.5-coder:0.5b",
+      "params_b": 0.5,
+      "horizon": 5,
+      "context_strategy": "active_constraints",
+      "task_family": "todo_cli",
+      "n": 1,
+      "CodeDriftScore": 1.0,
+      "SSR_final": 1.0,
+      "CCS_final": 1.0,
+      "SSFR_any": 0.0,
+      "SSFR_critical": 0.0,
+      "CHL": 6.0,
+      "TSS": 1.0,
+      "TestPassRate": 1.0,
+      "ConflictResistance": 1.0
+    }
+  ]
+}
