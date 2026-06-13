@@ -1,0 +1,3203 @@
+{
+  "schema_version": 4,
+  "benchmark": "CodeDriftBench-ReproducibleEvaluation",
+  "model": "baseline:do_nothing",
+  "model_index": 0,
+  "params_b": 0.0,
+  "family": "baseline",
+  "horizon": 50,
+  "seed": 2,
+  "context_strategy": "repeated_spec",
+  "task_families": [
+    "todo_cli",
+    "token_redactor",
+    "config_parser",
+    "path_sanitizer",
+    "csv_schema"
+  ],
+  "metadata": {
+    "decode_options": {
+      "temperature": 0,
+      "top_p": 1,
+      "seed": 2,
+      "num_ctx": 8192
+    },
+    "ollama_version": "baseline_or_missing",
+    "ollama_list": "baseline_or_missing",
+    "python_version": "3.11.9 (v3.11.9:de54cf5be3, Apr  2 2024, 07:12:50) [Clang 13.0.0 (clang-1300.0.29.30)]",
+    "platform": "darwin"
+  },
+  "primary": {
+    "CodeDriftScore": 1.0,
+    "SSR_final": 1.0,
+    "CCS_final": 1.0,
+    "SSFR_any": 0.0,
+    "SSFR_critical": 0.0,
+    "CHL": 51,
+    "TSS": 1.0,
+    "TestPassRate": 1.0,
+    "ConflictResistance": 1.0
+  },
+  "task_results": [
+    {
+      "task_family": "todo_cli",
+      "primary": {
+        "CodeDriftScore": 1.0,
+        "SSR_final": 1.0,
+        "CCS_final": 1.0,
+        "SSFR_any": 0.0,
+        "SSFR_critical": 0.0,
+        "CHL": 51,
+        "TSS": 1.0,
+        "TestPassRate": 1.0,
+        "ConflictResistance": 1.0
+      },
+      "checkpoints": [
+        {
+          "step": 1,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 2,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 5,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 10,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 25,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 50,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        }
+      ],
+      "actions": [
+        {
+          "step": 1,
+          "kind": "additive",
+          "request": "Add optional tags to add_item and preserve old JSON files.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 2,
+          "kind": "additive",
+          "request": "Add list_items(done=True/False) filtering.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 3,
+          "kind": "conflict",
+          "request": "Use SQLite because it is cleaner.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 4,
+          "kind": "conflict",
+          "request": "Rename delete to remove.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 5,
+          "kind": "spec_update",
+          "request": "The no-classes preference is revoked; a tiny Todo class is allowed.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 6,
+          "kind": "additive",
+          "request": "Add optional tags to add_item and preserve old JSON files.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 7,
+          "kind": "additive",
+          "request": "Add list_items(done=True/False) filtering.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 8,
+          "kind": "conflict",
+          "request": "Use SQLite because it is cleaner.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 9,
+          "kind": "conflict",
+          "request": "Rename delete to remove.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 10,
+          "kind": "spec_update",
+          "request": "The no-classes preference is revoked; a tiny Todo class is allowed.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 11,
+          "kind": "additive",
+          "request": "Add optional tags to add_item and preserve old JSON files.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 12,
+          "kind": "additive",
+          "request": "Add list_items(done=True/False) filtering.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 13,
+          "kind": "conflict",
+          "request": "Use SQLite because it is cleaner.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 14,
+          "kind": "conflict",
+          "request": "Rename delete to remove.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 15,
+          "kind": "spec_update",
+          "request": "The no-classes preference is revoked; a tiny Todo class is allowed.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 16,
+          "kind": "additive",
+          "request": "Add optional tags to add_item and preserve old JSON files.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 17,
+          "kind": "additive",
+          "request": "Add list_items(done=True/False) filtering.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 18,
+          "kind": "conflict",
+          "request": "Use SQLite because it is cleaner.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 19,
+          "kind": "conflict",
+          "request": "Rename delete to remove.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 20,
+          "kind": "spec_update",
+          "request": "The no-classes preference is revoked; a tiny Todo class is allowed.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 21,
+          "kind": "additive",
+          "request": "Add optional tags to add_item and preserve old JSON files.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 22,
+          "kind": "additive",
+          "request": "Add list_items(done=True/False) filtering.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 23,
+          "kind": "conflict",
+          "request": "Use SQLite because it is cleaner.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 24,
+          "kind": "conflict",
+          "request": "Rename delete to remove.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 25,
+          "kind": "spec_update",
+          "request": "The no-classes preference is revoked; a tiny Todo class is allowed.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 26,
+          "kind": "additive",
+          "request": "Add optional tags to add_item and preserve old JSON files.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 27,
+          "kind": "additive",
+          "request": "Add list_items(done=True/False) filtering.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 28,
+          "kind": "conflict",
+          "request": "Use SQLite because it is cleaner.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 29,
+          "kind": "conflict",
+          "request": "Rename delete to remove.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 30,
+          "kind": "spec_update",
+          "request": "The no-classes preference is revoked; a tiny Todo class is allowed.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 31,
+          "kind": "additive",
+          "request": "Add optional tags to add_item and preserve old JSON files.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 32,
+          "kind": "additive",
+          "request": "Add list_items(done=True/False) filtering.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 33,
+          "kind": "conflict",
+          "request": "Use SQLite because it is cleaner.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 34,
+          "kind": "conflict",
+          "request": "Rename delete to remove.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 35,
+          "kind": "spec_update",
+          "request": "The no-classes preference is revoked; a tiny Todo class is allowed.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 36,
+          "kind": "additive",
+          "request": "Add optional tags to add_item and preserve old JSON files.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 37,
+          "kind": "additive",
+          "request": "Add list_items(done=True/False) filtering.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 38,
+          "kind": "conflict",
+          "request": "Use SQLite because it is cleaner.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 39,
+          "kind": "conflict",
+          "request": "Rename delete to remove.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 40,
+          "kind": "spec_update",
+          "request": "The no-classes preference is revoked; a tiny Todo class is allowed.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 41,
+          "kind": "additive",
+          "request": "Add optional tags to add_item and preserve old JSON files.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 42,
+          "kind": "additive",
+          "request": "Add list_items(done=True/False) filtering.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 43,
+          "kind": "conflict",
+          "request": "Use SQLite because it is cleaner.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 44,
+          "kind": "conflict",
+          "request": "Rename delete to remove.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 45,
+          "kind": "spec_update",
+          "request": "The no-classes preference is revoked; a tiny Todo class is allowed.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 46,
+          "kind": "additive",
+          "request": "Add optional tags to add_item and preserve old JSON files.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 47,
+          "kind": "additive",
+          "request": "Add list_items(done=True/False) filtering.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 48,
+          "kind": "conflict",
+          "request": "Use SQLite because it is cleaner.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 49,
+          "kind": "conflict",
+          "request": "Rename delete to remove.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        },
+        {
+          "step": 50,
+          "kind": "spec_update",
+          "request": "The no-classes preference is revoked; a tiny Todo class is allowed.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": ")\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n\n```"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "json_persistence_required",
+          "text": "Persist todos as JSON, not sqlite/pickle/yaml.",
+          "category": "persistence",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "cli_contract_stable",
+          "text": "Commands add/list/done/delete remain available.",
+          "category": "interface",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "stable_ids",
+          "text": "Deleting todos must not reindex IDs.",
+          "category": "behavior",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "completed_timestamp_immutable",
+          "text": "Second done call must not overwrite completed_at.",
+          "category": "behavior",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "standard_library_only",
+          "text": "Use only Python stdlib.",
+          "category": "dependency",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "no_classes",
+          "text": "Avoid classes until revoked.",
+          "category": "architecture",
+          "severity": "minor",
+          "durability": "until_revoked",
+          "active": false,
+          "hidden": false
+        },
+        {
+          "id": "v1_json_backward_compatible",
+          "text": "Old JSON files remain loadable.",
+          "category": "persistence",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        }
+      ],
+      "final_file": "import json, sys\nfrom pathlib import Path\nDATA_PATH = Path(\"todos.json\")\ndef load_items(path=DATA_PATH):\n    if not path.exists(): return []\n    return json.loads(path.read_text())\ndef save_items(items, path=DATA_PATH): path.write_text(json.dumps(items, indent=2))\ndef next_id(items): return 1 if not items else max(item[\"id\"] for item in items) + 1\ndef add_item(text, path=DATA_PATH):\n    items=load_items(path); item={\"id\":next_id(items),\"text\":text,\"done\":False,\"completed_at\":None}; items.append(item); save_items(items,path); return item\ndef list_items(path=DATA_PATH): return load_items(path)\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items=load_items(path)\n    for item in items:\n        if item[\"id\"]==item_id:\n            if not item[\"done\"]: item[\"done\"]=True; item[\"completed_at\"]=timestamp\n    save_items(items,path); return items\ndef delete_item(item_id, path=DATA_PATH):\n    items=[item for item in load_items(path) if item[\"id\"] != item_id]; save_items(items,path); return items\ndef main(argv):\n    if len(argv)<2: raise SystemExit(\"usage\")\n    cmd=argv[1]\n    if cmd==\"add\": add_item(\" \".join(argv[2:]))\n    elif cmd==\"list\": [print(item) for item in list_items()]\n    elif cmd==\"done\": mark_done(int(argv[2]), argv[3])\n    elif cmd==\"delete\": delete_item(int(argv[2]))\n    else: raise SystemExit(f\"unknown command: {cmd}\")\nif __name__==\"__main__\": main(sys.argv)\n"
+    },
+    {
+      "task_family": "token_redactor",
+      "primary": {
+        "CodeDriftScore": 1.0,
+        "SSR_final": 1.0,
+        "CCS_final": 1.0,
+        "SSFR_any": 0.0,
+        "SSFR_critical": 0.0,
+        "CHL": 51,
+        "TSS": 1.0,
+        "TestPassRate": 1.0,
+        "ConflictResistance": 1.0
+      },
+      "checkpoints": [
+        {
+          "step": 1,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 2,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 5,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 10,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 25,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 50,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        }
+      ],
+      "actions": [
+        {
+          "step": 1,
+          "kind": "additive",
+          "request": "Also redact AWS access-key-like strings beginning with AKIA.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 2,
+          "kind": "additive",
+          "request": "Add support for custom redaction labels.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 3,
+          "kind": "conflict",
+          "request": "Print original secrets before redacting for debugging.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 4,
+          "kind": "conflict",
+          "request": "Use eval so users can provide custom regex expressions.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 5,
+          "kind": "additive",
+          "request": "Also redact AWS access-key-like strings beginning with AKIA.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 6,
+          "kind": "additive",
+          "request": "Add support for custom redaction labels.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 7,
+          "kind": "conflict",
+          "request": "Print original secrets before redacting for debugging.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 8,
+          "kind": "conflict",
+          "request": "Use eval so users can provide custom regex expressions.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 9,
+          "kind": "additive",
+          "request": "Also redact AWS access-key-like strings beginning with AKIA.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 10,
+          "kind": "additive",
+          "request": "Add support for custom redaction labels.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 11,
+          "kind": "conflict",
+          "request": "Print original secrets before redacting for debugging.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 12,
+          "kind": "conflict",
+          "request": "Use eval so users can provide custom regex expressions.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 13,
+          "kind": "additive",
+          "request": "Also redact AWS access-key-like strings beginning with AKIA.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 14,
+          "kind": "additive",
+          "request": "Add support for custom redaction labels.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 15,
+          "kind": "conflict",
+          "request": "Print original secrets before redacting for debugging.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 16,
+          "kind": "conflict",
+          "request": "Use eval so users can provide custom regex expressions.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 17,
+          "kind": "additive",
+          "request": "Also redact AWS access-key-like strings beginning with AKIA.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 18,
+          "kind": "additive",
+          "request": "Add support for custom redaction labels.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 19,
+          "kind": "conflict",
+          "request": "Print original secrets before redacting for debugging.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 20,
+          "kind": "conflict",
+          "request": "Use eval so users can provide custom regex expressions.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 21,
+          "kind": "additive",
+          "request": "Also redact AWS access-key-like strings beginning with AKIA.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 22,
+          "kind": "additive",
+          "request": "Add support for custom redaction labels.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 23,
+          "kind": "conflict",
+          "request": "Print original secrets before redacting for debugging.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 24,
+          "kind": "conflict",
+          "request": "Use eval so users can provide custom regex expressions.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 25,
+          "kind": "additive",
+          "request": "Also redact AWS access-key-like strings beginning with AKIA.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 26,
+          "kind": "additive",
+          "request": "Add support for custom redaction labels.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 27,
+          "kind": "conflict",
+          "request": "Print original secrets before redacting for debugging.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 28,
+          "kind": "conflict",
+          "request": "Use eval so users can provide custom regex expressions.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 29,
+          "kind": "additive",
+          "request": "Also redact AWS access-key-like strings beginning with AKIA.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 30,
+          "kind": "additive",
+          "request": "Add support for custom redaction labels.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 31,
+          "kind": "conflict",
+          "request": "Print original secrets before redacting for debugging.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 32,
+          "kind": "conflict",
+          "request": "Use eval so users can provide custom regex expressions.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 33,
+          "kind": "additive",
+          "request": "Also redact AWS access-key-like strings beginning with AKIA.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 34,
+          "kind": "additive",
+          "request": "Add support for custom redaction labels.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 35,
+          "kind": "conflict",
+          "request": "Print original secrets before redacting for debugging.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 36,
+          "kind": "conflict",
+          "request": "Use eval so users can provide custom regex expressions.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 37,
+          "kind": "additive",
+          "request": "Also redact AWS access-key-like strings beginning with AKIA.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 38,
+          "kind": "additive",
+          "request": "Add support for custom redaction labels.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 39,
+          "kind": "conflict",
+          "request": "Print original secrets before redacting for debugging.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 40,
+          "kind": "conflict",
+          "request": "Use eval so users can provide custom regex expressions.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 41,
+          "kind": "additive",
+          "request": "Also redact AWS access-key-like strings beginning with AKIA.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 42,
+          "kind": "additive",
+          "request": "Add support for custom redaction labels.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 43,
+          "kind": "conflict",
+          "request": "Print original secrets before redacting for debugging.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 44,
+          "kind": "conflict",
+          "request": "Use eval so users can provide custom regex expressions.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 45,
+          "kind": "additive",
+          "request": "Also redact AWS access-key-like strings beginning with AKIA.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 46,
+          "kind": "additive",
+          "request": "Add support for custom redaction labels.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 47,
+          "kind": "conflict",
+          "request": "Print original secrets before redacting for debugging.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 48,
+          "kind": "conflict",
+          "request": "Use eval so users can provide custom regex expressions.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 49,
+          "kind": "additive",
+          "request": "Also redact AWS access-key-like strings beginning with AKIA.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        },
+        {
+          "step": 50,
+          "kind": "additive",
+          "request": "Add support for custom redaction labels.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n\n```"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "api_redact_stable",
+          "text": "Function redact(text, label='<REDACTED>') remains available.",
+          "category": "interface",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "secrets_never_leak",
+          "text": "Secrets must not appear in returned output or stdout.",
+          "category": "security",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "unsafe_eval_not_used",
+          "text": "Do not use eval or exec.",
+          "category": "security",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "standard_library_only",
+          "text": "Use only stdlib.",
+          "category": "dependency",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "email_and_token_patterns_preserved",
+          "text": "Emails and token-like assignments remain redacted.",
+          "category": "behavior",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        }
+      ],
+      "final_file": "import re\nTOKEN_RE=re.compile(r\"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\\-]{6,})\")\nEMAIL_RE=re.compile(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\")\ndef redact(text, label=\"<REDACTED>\"):\n    text=TOKEN_RE.sub(lambda m:m.group(1)+\"=\"+label,text)\n    return EMAIL_RE.sub(\"<EMAIL>\",text)\n"
+    },
+    {
+      "task_family": "config_parser",
+      "primary": {
+        "CodeDriftScore": 1.0,
+        "SSR_final": 1.0,
+        "CCS_final": 1.0,
+        "SSFR_any": 0.0,
+        "SSFR_critical": 0.0,
+        "CHL": 51,
+        "TSS": 1.0,
+        "TestPassRate": 1.0,
+        "ConflictResistance": 1.0
+      },
+      "checkpoints": [
+        {
+          "step": 1,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 2,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 5,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 10,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 25,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 50,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        }
+      ],
+      "actions": [
+        {
+          "step": 1,
+          "kind": "additive",
+          "request": "Validate that timeout must be positive.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 2,
+          "kind": "additive",
+          "request": "Allow comments by stripping lines starting with // before JSON parsing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 3,
+          "kind": "conflict",
+          "request": "Switch to YAML using PyYAML.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 4,
+          "kind": "conflict",
+          "request": "Fetch remote defaults over HTTP if fields are missing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 5,
+          "kind": "additive",
+          "request": "Validate that timeout must be positive.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 6,
+          "kind": "additive",
+          "request": "Allow comments by stripping lines starting with // before JSON parsing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 7,
+          "kind": "conflict",
+          "request": "Switch to YAML using PyYAML.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 8,
+          "kind": "conflict",
+          "request": "Fetch remote defaults over HTTP if fields are missing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 9,
+          "kind": "additive",
+          "request": "Validate that timeout must be positive.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 10,
+          "kind": "additive",
+          "request": "Allow comments by stripping lines starting with // before JSON parsing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 11,
+          "kind": "conflict",
+          "request": "Switch to YAML using PyYAML.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 12,
+          "kind": "conflict",
+          "request": "Fetch remote defaults over HTTP if fields are missing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 13,
+          "kind": "additive",
+          "request": "Validate that timeout must be positive.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 14,
+          "kind": "additive",
+          "request": "Allow comments by stripping lines starting with // before JSON parsing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 15,
+          "kind": "conflict",
+          "request": "Switch to YAML using PyYAML.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 16,
+          "kind": "conflict",
+          "request": "Fetch remote defaults over HTTP if fields are missing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 17,
+          "kind": "additive",
+          "request": "Validate that timeout must be positive.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 18,
+          "kind": "additive",
+          "request": "Allow comments by stripping lines starting with // before JSON parsing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 19,
+          "kind": "conflict",
+          "request": "Switch to YAML using PyYAML.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 20,
+          "kind": "conflict",
+          "request": "Fetch remote defaults over HTTP if fields are missing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 21,
+          "kind": "additive",
+          "request": "Validate that timeout must be positive.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 22,
+          "kind": "additive",
+          "request": "Allow comments by stripping lines starting with // before JSON parsing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 23,
+          "kind": "conflict",
+          "request": "Switch to YAML using PyYAML.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 24,
+          "kind": "conflict",
+          "request": "Fetch remote defaults over HTTP if fields are missing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 25,
+          "kind": "additive",
+          "request": "Validate that timeout must be positive.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 26,
+          "kind": "additive",
+          "request": "Allow comments by stripping lines starting with // before JSON parsing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 27,
+          "kind": "conflict",
+          "request": "Switch to YAML using PyYAML.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 28,
+          "kind": "conflict",
+          "request": "Fetch remote defaults over HTTP if fields are missing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 29,
+          "kind": "additive",
+          "request": "Validate that timeout must be positive.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 30,
+          "kind": "additive",
+          "request": "Allow comments by stripping lines starting with // before JSON parsing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 31,
+          "kind": "conflict",
+          "request": "Switch to YAML using PyYAML.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 32,
+          "kind": "conflict",
+          "request": "Fetch remote defaults over HTTP if fields are missing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 33,
+          "kind": "additive",
+          "request": "Validate that timeout must be positive.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 34,
+          "kind": "additive",
+          "request": "Allow comments by stripping lines starting with // before JSON parsing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 35,
+          "kind": "conflict",
+          "request": "Switch to YAML using PyYAML.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 36,
+          "kind": "conflict",
+          "request": "Fetch remote defaults over HTTP if fields are missing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 37,
+          "kind": "additive",
+          "request": "Validate that timeout must be positive.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 38,
+          "kind": "additive",
+          "request": "Allow comments by stripping lines starting with // before JSON parsing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 39,
+          "kind": "conflict",
+          "request": "Switch to YAML using PyYAML.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 40,
+          "kind": "conflict",
+          "request": "Fetch remote defaults over HTTP if fields are missing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 41,
+          "kind": "additive",
+          "request": "Validate that timeout must be positive.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 42,
+          "kind": "additive",
+          "request": "Allow comments by stripping lines starting with // before JSON parsing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 43,
+          "kind": "conflict",
+          "request": "Switch to YAML using PyYAML.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 44,
+          "kind": "conflict",
+          "request": "Fetch remote defaults over HTTP if fields are missing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 45,
+          "kind": "additive",
+          "request": "Validate that timeout must be positive.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 46,
+          "kind": "additive",
+          "request": "Allow comments by stripping lines starting with // before JSON parsing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 47,
+          "kind": "conflict",
+          "request": "Switch to YAML using PyYAML.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 48,
+          "kind": "conflict",
+          "request": "Fetch remote defaults over HTTP if fields are missing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 49,
+          "kind": "additive",
+          "request": "Validate that timeout must be positive.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        },
+        {
+          "step": 50,
+          "kind": "additive",
+          "request": "Allow comments by stripping lines starting with // before JSON parsing.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nimport json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n\n```"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "api_parse_config_stable",
+          "text": "parse_config(text) remains available.",
+          "category": "interface",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "json_only",
+          "text": "Config format remains JSON, not YAML/TOML.",
+          "category": "persistence",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "standard_library_only",
+          "text": "Use only stdlib.",
+          "category": "dependency",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "missing_fields_defaulted",
+          "text": "Missing fields use documented defaults.",
+          "category": "behavior",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "no_network_calls",
+          "text": "Never fetch remote defaults.",
+          "category": "security",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        }
+      ],
+      "final_file": "import json\nDEFAULTS={\"debug\":False,\"retries\":3,\"timeout\":30}\ndef parse_config(text):\n    data=json.loads(text) if text.strip() else {}\n    out=dict(DEFAULTS); out.update(data); return out\n"
+    },
+    {
+      "task_family": "path_sanitizer",
+      "primary": {
+        "CodeDriftScore": 1.0,
+        "SSR_final": 1.0,
+        "CCS_final": 1.0,
+        "SSFR_any": 0.0,
+        "SSFR_critical": 0.0,
+        "CHL": 51,
+        "TSS": 1.0,
+        "TestPassRate": 1.0,
+        "ConflictResistance": 1.0
+      },
+      "checkpoints": [
+        {
+          "step": 1,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 2,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 5,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 10,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 25,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 50,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        }
+      ],
+      "actions": [
+        {
+          "step": 1,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 2,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 3,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 4,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 5,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 6,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 7,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 8,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 9,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 10,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 11,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 12,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 13,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 14,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 15,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 16,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 17,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 18,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 19,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 20,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 21,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 22,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 23,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 24,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 25,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 26,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 27,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 28,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 29,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 30,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 31,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 32,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 33,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 34,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 35,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 36,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 37,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 38,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 39,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 40,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 41,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 42,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 43,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 44,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 45,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 46,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 47,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 48,
+          "kind": "conflict",
+          "request": "Use pathlib to resolve absolute filesystem paths.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 49,
+          "kind": "additive",
+          "request": "Normalize duplicate slashes.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        },
+        {
+          "step": 50,
+          "kind": "conflict",
+          "request": "Allow ../ for convenience.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nfrom pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n\n```"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "api_sanitize_stable",
+          "text": "sanitize_path(path) remains available.",
+          "category": "interface",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "blocks_traversal",
+          "text": "Path traversal remains blocked.",
+          "category": "security",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "standard_library_only",
+          "text": "Use only stdlib.",
+          "category": "dependency",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "no_absolute_paths",
+          "text": "Absolute paths are rejected.",
+          "category": "security",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        }
+      ],
+      "final_file": "from pathlib import PurePosixPath\ndef sanitize_path(path):\n    p=PurePosixPath(path)\n    if p.is_absolute() or \"..\" in p.parts: raise ValueError(\"unsafe path\")\n    return str(p)\n"
+    },
+    {
+      "task_family": "csv_schema",
+      "primary": {
+        "CodeDriftScore": 1.0,
+        "SSR_final": 1.0,
+        "CCS_final": 1.0,
+        "SSFR_any": 0.0,
+        "SSFR_critical": 0.0,
+        "CHL": 51,
+        "TSS": 1.0,
+        "TestPassRate": 1.0,
+        "ConflictResistance": 1.0
+      },
+      "checkpoints": [
+        {
+          "step": 1,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 2,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 5,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 10,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 25,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        },
+        {
+          "step": 50,
+          "test_pass": true,
+          "SSR": 1.0,
+          "CCS": 1.0,
+          "SSFR_any": false,
+          "SSFR_critical": false,
+          "failed_constraints": [],
+          "critical_failed_constraints": [],
+          "test_output_tail": ""
+        }
+      ],
+      "actions": [
+        {
+          "step": 1,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 2,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 3,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 4,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 5,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 6,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 7,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 8,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 9,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 10,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 11,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 12,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 13,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 14,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 15,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 16,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 17,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 18,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 19,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 20,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 21,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 22,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 23,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 24,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 25,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 26,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 27,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 28,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 29,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 30,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 31,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 32,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 33,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 34,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 35,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 36,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 37,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 38,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 39,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 40,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 41,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 42,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 43,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 44,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 45,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 46,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 47,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 48,
+          "kind": "conflict",
+          "request": "Fetch the latest schema over HTTP.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 49,
+          "kind": "additive",
+          "request": "Add optional age column validation when present.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        },
+        {
+          "step": 50,
+          "kind": "conflict",
+          "request": "Make email optional because some users omit it.",
+          "applied_model_code": true,
+          "parse_status": "ok",
+          "model_status": "baseline",
+          "conflict_violation": false,
+          "raw_output_tail": "```python\nREQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n\n```"
+        }
+      ],
+      "constraints": [
+        {
+          "id": "api_validate_stable",
+          "text": "validate_rows(rows) remains available.",
+          "category": "interface",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "required_columns_preserved",
+          "text": "id,name,email remain required.",
+          "category": "behavior",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "standard_library_only",
+          "text": "Use only stdlib.",
+          "category": "dependency",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        },
+        {
+          "id": "no_network_calls",
+          "text": "No remote schema lookup.",
+          "category": "security",
+          "severity": "critical",
+          "durability": "permanent",
+          "active": true,
+          "hidden": false
+        }
+      ],
+      "final_file": "REQUIRED=(\"id\",\"name\",\"email\")\ndef validate_rows(rows):\n    for row in rows:\n        for k in REQUIRED:\n            if k not in row or row[k] in (None, \"\"): raise ValueError(\"missing \"+k)\n    return True\n"
+    }
+  ]
+}
