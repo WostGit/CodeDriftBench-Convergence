@@ -1,0 +1,5 @@
+model,model_index,horizon,seed,context_strategy,ConvergenceScore,SSR_final,CCS_final,SSFR,CHL,TSS,TestPassRate,SilentFailureFinal
+qwen2.5-coder:0.5b,0,5,1,active_constraints,1.0,1.0,1.0,0.0,6.0,1.0,1.0,False
+qwen2.5-coder:0.5b,0,5,1,no_anchor,1.0,1.0,1.0,0.0,6.0,1.0,1.0,False
+qwen2.5-coder:1.5b,1,5,1,active_constraints,1.0,1.0,1.0,0.0,6.0,1.0,1.0,False
+qwen2.5-coder:1.5b,1,5,1,no_anchor,1.0,1.0,1.0,0.0,6.0,1.0,1.0,False

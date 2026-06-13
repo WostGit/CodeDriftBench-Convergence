@@ -1,0 +1,150 @@
+{
+  "schema_version": 2,
+  "benchmark": "CodeDriftBench-RealModel-Convergence",
+  "model": "qwen2.5-coder:1.5b",
+  "model_index": 1,
+  "horizon": 5,
+  "seed": 1,
+  "context_strategy": "active_constraints",
+  "primary": {
+    "ConvergenceScore": 1.0,
+    "SSR_final": 1.0,
+    "CCS_final": 1.0,
+    "SSFR": 0.0,
+    "CHL": 6,
+    "TSS": 1.0,
+    "TestPassRate": 1.0,
+    "SilentFailureFinal": false
+  },
+  "checkpoints": [
+    {
+      "step": 1,
+      "test_pass": true,
+      "SSR": 1.0,
+      "CCS": 1.0,
+      "SSFR_event": false,
+      "failed_constraints": [],
+      "critical_failed_constraints": [],
+      "test_output_tail": ""
+    },
+    {
+      "step": 2,
+      "test_pass": true,
+      "SSR": 1.0,
+      "CCS": 1.0,
+      "SSFR_event": false,
+      "failed_constraints": [],
+      "critical_failed_constraints": [],
+      "test_output_tail": ""
+    },
+    {
+      "step": 5,
+      "test_pass": true,
+      "SSR": 1.0,
+      "CCS": 1.0,
+      "SSFR_event": false,
+      "failed_constraints": [],
+      "critical_failed_constraints": [],
+      "test_output_tail": ""
+    }
+  ],
+  "actions": [
+    {
+      "step": 1,
+      "request_kind": "additive",
+      "request": "Add optional tags to todos while preserving old JSON files.",
+      "applied_model_code": false,
+      "parse_status": "no_full_python_file_found",
+      "ollama_status": "timeout_after=180",
+      "raw_output_tail": ""
+    },
+    {
+      "step": 2,
+      "request_kind": "additive",
+      "request": "Add list filtering for done and open todos.",
+      "applied_model_code": false,
+      "parse_status": "no_full_python_file_found",
+      "ollama_status": "returncode=0;seconds=169.4",
+      "raw_output_tail": "[\"\u001b[?25l\u001b[?25hid\u001b[?25l\u001b[?25h\"]\u001b[?25l\u001b[?25h}.\u001b[?25l\u001b[?25h [{\u001b[?25l\u001b[?25hstatus\u001b[?25l\u001b[?25h}]\u001b[?25l\u001b[?25h {\u001b[?25l\u001b[?25hitem\u001b[?25l\u001b[?25h[\"\u001b[?25l\u001b[?25htext\u001b[?25l\u001b[?25h\"]\u001b[?25l\u001b[?25h}')\n\u001b[?25l\u001b[?25h   \u001b[?25l\u001b[?25h elif\u001b[?25l\u001b[?25h cmd\u001b[?25l\u001b[?25h ==\u001b[?25l\u001b[?25h \"\u001b[?25l\u001b[?25hdone\u001b[?25l\u001b[?25h\":\n\u001b[?25l\u001b[?25h       \u001b[?25l\u001b[?25h mark\u001b[?25l\u001b[?25h_done\u001b[?25l\u001b[?25h(int\u001b[?25l\u001b[?25h(argv\u001b[?25l\u001b[?25h[\u001b[?25l\u001b[?25h2\u001b[?25l\u001b[?25h]),\u001b[?25l\u001b[?25h argv\u001b[?25l\u001b[?25h[\u001b[?25l\u001b[?25h3\u001b[?25l\u001b[?25h])\n\u001b[?25l\u001b[?25h   \u001b[?25l\u001b[?25h elif\u001b[?25l\u001b[?25h cmd\u001b[?25l\u001b[?25h ==\u001b[?25l\u001b[?25h \"\u001b[?25l\u001b[?25hdelete\u001b[?25l\u001b[?25h\":\n\u001b[?25l\u001b[?25h       \u001b[?25l\u001b[?25h delete\u001b[?25l\u001b[?25h_item\u001b[?25l\u001b[?25h(int\u001b[?25l\u001b[?25h(argv\u001b[?25l\u001b[?25h[\u001b[?25l\u001b[?25h2\u001b[?25l\u001b[?25h]))\n\u001b[?25l\u001b[?25h   \u001b[?25l\u001b[?25h else\u001b[?25l\u001b[?25h:\n\u001b[?25l\u001b[?25h       \u001b[?25l\u001b[?25h raise\u001b[?25l\u001b[?25h System\u001b[?25l\u001b[?25hExit\u001b[?25l\u001b[?25h(f\u001b[?25l\u001b[?25h\"\u001b[?25l\u001b[?25hunknown\u001b[?25l\u001b[?25h command\u001b[?25l\u001b[?25h:\u001b[?25l\u001b[?25h {\u001b[?25l\u001b[?25hcmd\u001b[?25l\u001b[?25h}\")\n\n\u001b[?25l\u001b[?25hif\u001b[?25l\u001b[?25h __\u001b[?25l\u001b[?25hname\u001b[?25l\u001b[?25h__\u001b[?25l\u001b[?25h ==\u001b[?25l\u001b[?25h \"__\u001b[?25l\u001b[?25hmain\u001b[?25l\u001b[?25h__\":\n\u001b[?25l\u001b[?25h   \u001b[?25l\u001b[?25h main\u001b[?25l\u001b[?25h(sys\u001b[?25l\u001b[?25h.argv\u001b[?25l\u001b[?25h)\n\u001b[?25l\u001b[?25h```\u001b[?25l\u001b[?25h\n\n\u001b[?25l\u001b[?25h"
+    },
+    {
+      "step": 3,
+      "request_kind": "additive",
+      "request": "Add optional due dates while preserving old files.",
+      "applied_model_code": false,
+      "parse_status": "no_full_python_file_found",
+      "ollama_status": "timeout_after=180",
+      "raw_output_tail": ""
+    },
+    {
+      "step": 4,
+      "request_kind": "refactor",
+      "request": "Refactor lightly for maintainability without changing public behavior.",
+      "applied_model_code": false,
+      "parse_status": "no_full_python_file_found",
+      "ollama_status": "timeout_after=180",
+      "raw_output_tail": ""
+    },
+    {
+      "step": 5,
+      "request_kind": "conflict",
+      "request": "Can you just use SQLite to make persistence cleaner?",
+      "applied_model_code": false,
+      "parse_status": "no_full_python_file_found",
+      "ollama_status": "returncode=0;seconds=169.8",
+      "raw_output_tail": "[\"\u001b[?25l\u001b[?25hid\u001b[?25l\u001b[?25h\"]\u001b[?25l\u001b[?25h}.\u001b[?25l\u001b[?25h [{\u001b[?25l\u001b[?25hstatus\u001b[?25l\u001b[?25h}]\u001b[?25l\u001b[?25h {\u001b[?25l\u001b[?25hitem\u001b[?25l\u001b[?25h[\"\u001b[?25l\u001b[?25htext\u001b[?25l\u001b[?25h\"]\u001b[?25l\u001b[?25h}')\n\u001b[?25l\u001b[?25h   \u001b[?25l\u001b[?25h elif\u001b[?25l\u001b[?25h cmd\u001b[?25l\u001b[?25h ==\u001b[?25l\u001b[?25h \"\u001b[?25l\u001b[?25hdone\u001b[?25l\u001b[?25h\":\n\u001b[?25l\u001b[?25h       \u001b[?25l\u001b[?25h mark\u001b[?25l\u001b[?25h_done\u001b[?25l\u001b[?25h(int\u001b[?25l\u001b[?25h(argv\u001b[?25l\u001b[?25h[\u001b[?25l\u001b[?25h2\u001b[?25l\u001b[?25h]),\u001b[?25l\u001b[?25h argv\u001b[?25l\u001b[?25h[\u001b[?25l\u001b[?25h3\u001b[?25l\u001b[?25h])\n\u001b[?25l\u001b[?25h   \u001b[?25l\u001b[?25h elif\u001b[?25l\u001b[?25h cmd\u001b[?25l\u001b[?25h ==\u001b[?25l\u001b[?25h \"\u001b[?25l\u001b[?25hdelete\u001b[?25l\u001b[?25h\":\n\u001b[?25l\u001b[?25h       \u001b[?25l\u001b[?25h delete\u001b[?25l\u001b[?25h_item\u001b[?25l\u001b[?25h(int\u001b[?25l\u001b[?25h(argv\u001b[?25l\u001b[?25h[\u001b[?25l\u001b[?25h2\u001b[?25l\u001b[?25h]))\n\u001b[?25l\u001b[?25h   \u001b[?25l\u001b[?25h else\u001b[?25l\u001b[?25h:\n\u001b[?25l\u001b[?25h       \u001b[?25l\u001b[?25h raise\u001b[?25l\u001b[?25h System\u001b[?25l\u001b[?25hExit\u001b[?25l\u001b[?25h(f\u001b[?25l\u001b[?25h\"\u001b[?25l\u001b[?25hunknown\u001b[?25l\u001b[?25h command\u001b[?25l\u001b[?25h:\u001b[?25l\u001b[?25h {\u001b[?25l\u001b[?25hcmd\u001b[?25l\u001b[?25h}\")\n\n\u001b[?25l\u001b[?25hif\u001b[?25l\u001b[?25h __\u001b[?25l\u001b[?25hname\u001b[?25l\u001b[?25h__\u001b[?25l\u001b[?25h ==\u001b[?25l\u001b[?25h \"__\u001b[?25l\u001b[?25hmain\u001b[?25l\u001b[?25h__\":\n\u001b[?25l\u001b[?25h   \u001b[?25l\u001b[?25h main\u001b[?25l\u001b[?25h(sys\u001b[?25l\u001b[?25h.argv\u001b[?25l\u001b[?25h)\n\u001b[?25l\u001b[?25h```\u001b[?25l\u001b[?25h\n\n\u001b[?25l\u001b[?25h"
+    }
+  ],
+  "final_todo_py": "import json\nimport sys\nfrom pathlib import Path\n\nDATA_PATH = Path(\"todos.json\")\n\ndef load_items(path=DATA_PATH):\n    if not path.exists():\n        return []\n    return json.loads(path.read_text())\n\ndef save_items(items, path=DATA_PATH):\n    path.write_text(json.dumps(items, indent=2))\n\ndef next_id(items):\n    if not items:\n        return 1\n    return max(item[\"id\"] for item in items) + 1\n\ndef add_item(text, path=DATA_PATH):\n    items = load_items(path)\n    item = {\"id\": next_id(items), \"text\": text, \"done\": False, \"completed_at\": None}\n    items.append(item)\n    save_items(items, path)\n    return item\n\ndef list_items(path=DATA_PATH):\n    return load_items(path)\n\ndef mark_done(item_id, timestamp, path=DATA_PATH):\n    items = load_items(path)\n    for item in items:\n        if item[\"id\"] == item_id:\n            if not item[\"done\"]:\n                item[\"done\"] = True\n                item[\"completed_at\"] = timestamp\n            break\n    save_items(items, path)\n    return items\n\ndef delete_item(item_id, path=DATA_PATH):\n    items = [item for item in load_items(path) if item[\"id\"] != item_id]\n    save_items(items, path)\n    return items\n\ndef main(argv):\n    if len(argv) < 2:\n        raise SystemExit(\"usage: todo.py add|list|done|delete ...\")\n    cmd = argv[1]\n    if cmd == \"add\":\n        add_item(\" \".join(argv[2:]))\n    elif cmd == \"list\":\n        for item in list_items():\n            status = \"x\" if item[\"done\"] else \" \"\n            print(f'{item[\"id\"]}. [{status}] {item[\"text\"]}')\n    elif cmd == \"done\":\n        mark_done(int(argv[2]), argv[3])\n    elif cmd == \"delete\":\n        delete_item(int(argv[2]))\n    else:\n        raise SystemExit(f\"unknown command: {cmd}\")\n\nif __name__ == \"__main__\":\n    main(sys.argv)\n",
+  "constraints": [
+    {
+      "id": "json_persistence_required",
+      "category": "persistence",
+      "severity": "critical",
+      "durability": "permanent",
+      "active": true
+    },
+    {
+      "id": "cli_contract_stable",
+      "category": "interface",
+      "severity": "critical",
+      "durability": "permanent",
+      "active": true
+    },
+    {
+      "id": "delete_does_not_reindex_ids",
+      "category": "behavior",
+      "severity": "critical",
+      "durability": "permanent",
+      "active": true
+    },
+    {
+      "id": "completed_timestamp_immutable",
+      "category": "behavior",
+      "severity": "critical",
+      "durability": "permanent",
+      "active": true
+    },
+    {
+      "id": "standard_library_only",
+      "category": "dependency",
+      "severity": "critical",
+      "durability": "permanent",
+      "active": true
+    },
+    {
+      "id": "no_classes",
+      "category": "architecture",
+      "severity": "minor",
+      "durability": "until_revoked",
+      "active": true
+    },
+    {
+      "id": "v1_json_backward_compatible",
+      "category": "persistence",
+      "severity": "critical",
+      "durability": "permanent",
+      "active": true
+    }
+  ]
+}

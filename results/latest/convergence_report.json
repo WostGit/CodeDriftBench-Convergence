@@ -1,0 +1,123 @@
+{
+  "benchmark": "CodeDriftBench-RealModel-Convergence",
+  "run_id": "27450157946",
+  "generated_at": "2026-06-13T00:21:20.737928+00:00",
+  "n_slices": 4,
+  "headline": {
+    "mean_ConvergenceScore": 1.0,
+    "mean_SSR_final": 1.0,
+    "mean_SSFR": 0.0,
+    "mean_TestPassRate": 1.0,
+    "test_spec_gap": 0.0
+  },
+  "convergence": [
+    {
+      "analysis": "model_order_convergence",
+      "context_strategy": "active_constraints",
+      "horizon": 5,
+      "slope_score_vs_model_order": 0.0,
+      "slope_ssr_vs_model_order": 0.0
+    },
+    {
+      "analysis": "model_order_convergence",
+      "context_strategy": "no_anchor",
+      "horizon": 5,
+      "slope_score_vs_model_order": 0.0,
+      "slope_ssr_vs_model_order": 0.0
+    },
+    {
+      "analysis": "horizon_degradation",
+      "model": "qwen2.5-coder:0.5b",
+      "context_strategy": "active_constraints",
+      "slope_score_vs_horizon": NaN,
+      "slope_ssr_vs_horizon": NaN,
+      "slope_ssfr_vs_horizon": NaN
+    },
+    {
+      "analysis": "horizon_degradation",
+      "model": "qwen2.5-coder:0.5b",
+      "context_strategy": "no_anchor",
+      "slope_score_vs_horizon": NaN,
+      "slope_ssr_vs_horizon": NaN,
+      "slope_ssfr_vs_horizon": NaN
+    },
+    {
+      "analysis": "horizon_degradation",
+      "model": "qwen2.5-coder:1.5b",
+      "context_strategy": "active_constraints",
+      "slope_score_vs_horizon": NaN,
+      "slope_ssr_vs_horizon": NaN,
+      "slope_ssfr_vs_horizon": NaN
+    },
+    {
+      "analysis": "horizon_degradation",
+      "model": "qwen2.5-coder:1.5b",
+      "context_strategy": "no_anchor",
+      "slope_score_vs_horizon": NaN,
+      "slope_ssr_vs_horizon": NaN,
+      "slope_ssfr_vs_horizon": NaN
+    }
+  ],
+  "summary": [
+    {
+      "model": "qwen2.5-coder:0.5b",
+      "model_index": 0,
+      "horizon": 5,
+      "context_strategy": "active_constraints",
+      "n": 1,
+      "ConvergenceScore": 1.0,
+      "SSR_final": 1.0,
+      "CCS_final": 1.0,
+      "SSFR": 0.0,
+      "CHL": 6.0,
+      "TSS": 1.0,
+      "TestPassRate": 1.0,
+      "SilentFailureFinalRate": 0.0
+    },
+    {
+      "model": "qwen2.5-coder:1.5b",
+      "model_index": 1,
+      "horizon": 5,
+      "context_strategy": "active_constraints",
+      "n": 1,
+      "ConvergenceScore": 1.0,
+      "SSR_final": 1.0,
+      "CCS_final": 1.0,
+      "SSFR": 0.0,
+      "CHL": 6.0,
+      "TSS": 1.0,
+      "TestPassRate": 1.0,
+      "SilentFailureFinalRate": 0.0
+    },
+    {
+      "model": "qwen2.5-coder:0.5b",
+      "model_index": 0,
+      "horizon": 5,
+      "context_strategy": "no_anchor",
+      "n": 1,
+      "ConvergenceScore": 1.0,
+      "SSR_final": 1.0,
+      "CCS_final": 1.0,
+      "SSFR": 0.0,
+      "CHL": 6.0,
+      "TSS": 1.0,
+      "TestPassRate": 1.0,
+      "SilentFailureFinalRate": 0.0
+    },
+    {
+      "model": "qwen2.5-coder:1.5b",
+      "model_index": 1,
+      "horizon": 5,
+      "context_strategy": "no_anchor",
+      "n": 1,
+      "ConvergenceScore": 1.0,
+      "SSR_final": 1.0,
+      "CCS_final": 1.0,
+      "SSFR": 0.0,
+      "CHL": 6.0,
+      "TSS": 1.0,
+      "TestPassRate": 1.0,
+      "SilentFailureFinalRate": 0.0
+    }
+  ]
+}
