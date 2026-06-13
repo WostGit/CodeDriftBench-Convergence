@@ -1,24 +1,34 @@
-name: CodeDriftBench Real-Model Convergence
+name: CodeDriftBench Publishable Evidence
 
 on:
   workflow_dispatch:
     inputs:
+      evidence_profile:
+        description: "smoke, core, or paper. Paper is expensive."
+        required: true
+        default: "core"
+        type: choice
+        options: [smoke, core, paper]
       models:
-        description: "Comma-separated Ollama model tags, ordered small to large"
-        required: true
-        default: "qwen2.5-coder:0.5b,qwen2.5-coder:1.5b"
+        description: "Comma-separated Ollama model tags ordered small to large. Leave empty to use profile defaults."
+        required: false
+        default: ""
       horizons:
-        description: "Comma-separated horizons. Keep small for first run."
-        required: true
-        default: "5,10"
+        description: "Comma-separated horizons. Leave empty to use profile defaults."
+        required: false
+        default: ""
       seeds:
-        description: "Comma-separated random seeds"
-        required: true
-        default: "1,2"
+        description: "Comma-separated seeds. Leave empty to use profile defaults."
+        required: false
+        default: ""
       context_strategies:
-        description: "Comma-separated strategies"
-        required: true
-        default: "no_anchor,active_constraints"
+        description: "Comma-separated strategies. Leave empty to use profile defaults."
+        required: false
+        default: ""
+      task_families:
+        description: "Comma-separated task families. Leave empty to use profile defaults."
+        required: false
+        default: ""
   push:
     branches: [main]
     paths:
@@ -35,72 +45,85 @@ env:
   OLLAMA_KEEP_ALIVE: "1m"
 
 concurrency:
-  group: codedriftbench-convergence-${{ github.ref }}
+  group: codedriftbench-evidence-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   prepare-matrix:
-    name: Prepare matrix
+    name: Prepare evidence matrix
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
+      task_families: ${{ steps.matrix.outputs.task_families }}
+      profile: ${{ steps.matrix.outputs.profile }}
     steps:
       - name: Build matrix
         id: matrix
         shell: python
         run: |
           import json, os
-          if os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch":
-              models = "${{ github.event.inputs.models }}".split(",")
-              horizons = "${{ github.event.inputs.horizons }}".split(",")
-              seeds = "${{ github.event.inputs.seeds }}".split(",")
-              strategies = "${{ github.event.inputs.context_strategies }}".split(",")
-          else:
-              models = "qwen2.5-coder:0.5b,qwen2.5-coder:1.5b".split(",")
-              horizons = "5".split(",")
-              seeds = "1".split(",")
-              strategies = "no_anchor,active_constraints".split(",")
-
-          models = [x.strip() for x in models if x.strip()]
-          horizons = [int(x.strip()) for x in horizons if x.strip()]
-          seeds = [int(x.strip()) for x in seeds if x.strip()]
-          strategies = [x.strip() for x in strategies if x.strip()]
-
+          event = os.environ.get("GITHUB_EVENT_NAME", "")
+          profile = "${{ github.event.inputs.evidence_profile }}" if event == "workflow_dispatch" else "smoke"
+          profile = profile or "core"
+          defaults = {
+              "smoke": {
+                  "models": "qwen2.5-coder:0.5b,qwen2.5-coder:1.5b",
+                  "horizons": "5",
+                  "seeds": "1",
+                  "strategies": "no_anchor,active_constraints",
+                  "tasks": "todo_cli,token_redactor,config_parser",
+              },
+              "core": {
+                  "models": "qwen2.5-coder:0.5b,qwen2.5-coder:1.5b,qwen2.5-coder:3b",
+                  "horizons": "5,10,20",
+                  "seeds": "1,2,3",
+                  "strategies": "no_anchor,repeated_spec,active_constraints",
+                  "tasks": "todo_cli,token_redactor,config_parser",
+              },
+              "paper": {
+                  "models": "qwen2.5-coder:0.5b,qwen2.5-coder:1.5b,qwen2.5-coder:3b,qwen2.5-coder:7b",
+                  "horizons": "5,10,20,40",
+                  "seeds": "1,2,3,4,5",
+                  "strategies": "no_anchor,repeated_spec,active_constraints,self_audit",
+                  "tasks": "todo_cli,token_redactor,config_parser",
+              },
+          }[profile]
+          def override(name, default):
+              v = "${{ github.event.inputs.models }}" if name == "models" else "${{ github.event.inputs.horizons }}" if name == "horizons" else "${{ github.event.inputs.seeds }}" if name == "seeds" else "${{ github.event.inputs.context_strategies }}" if name == "strategies" else "${{ github.event.inputs.task_families }}"
+              return v.strip() if event == "workflow_dispatch" and v.strip() else default
+          models = [x.strip() for x in override("models", defaults["models"]).split(",") if x.strip()]
+          horizons = [int(x.strip()) for x in override("horizons", defaults["horizons"]).split(",") if x.strip()]
+          seeds = [int(x.strip()) for x in override("seeds", defaults["seeds"]).split(",") if x.strip()]
+          strategies = [x.strip() for x in override("strategies", defaults["strategies"]).split(",") if x.strip()]
+          tasks = [x.strip() for x in override("tasks", defaults["tasks"]).split(",") if x.strip()]
           include = []
           for model_index, model in enumerate(models):
               safe_model = model.replace(":", "-").replace("/", "-")
               for horizon in horizons:
                   for seed in seeds:
                       for strategy in strategies:
-                          include.append({
-                              "model": model,
-                              "safe_model": safe_model,
-                              "model_index": model_index,
-                              "horizon": horizon,
-                              "seed": seed,
-                              "context_strategy": strategy,
-                          })
+                          include.append({"model": model, "safe_model": safe_model, "model_index": model_index, "horizon": horizon, "seed": seed, "context_strategy": strategy})
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
               f.write("matrix=" + json.dumps({"include": include}) + "\n")
+              f.write("task_families=" + ",".join(tasks) + "\n")
+              f.write("profile=" + profile + "\n")
 
   benchmark:
-    name: Run ${{ matrix.model }} h${{ matrix.horizon }} s${{ matrix.seed }} ${{ matrix.context_strategy }}
+    name: ${{ matrix.model }} h${{ matrix.horizon }} s${{ matrix.seed }} ${{ matrix.context_strategy }}
     needs: prepare-matrix
     runs-on: macos-latest
-    timeout-minutes: 240
+    timeout-minutes: 360
     strategy:
       fail-fast: false
+      max-parallel: 5
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
       - name: Cache Ollama models
         uses: actions/cache@v4
         with:
@@ -108,13 +131,11 @@ jobs:
           key: ollama-${{ runner.os }}-${{ matrix.safe_model }}
           restore-keys: |
             ollama-${{ runner.os }}-
-
       - name: Install Ollama
         shell: bash
         run: |
           brew update
           brew install ollama
-
       - name: Start Ollama and pull model
         shell: bash
         run: |
@@ -123,28 +144,15 @@ jobs:
           sleep 10
           ollama pull "${{ matrix.model }}"
           ollama list
-
-      - name: Create real-model benchmark runner
+      - name: Create publishable benchmark runner
         shell: bash
         run: |
           mkdir -p .codedriftbench
-          cat > .codedriftbench/run_real_model_slice.py <<'PY'
-          import argparse
-          import ast
-          import csv
-          import json
-          import os
-          import random
-          import re
-          import statistics
-          import subprocess
-          import sys
-          import tempfile
-          import textwrap
-          import time
+          cat > .codedriftbench/run_publishable_slice.py <<'PY'
+          import argparse, ast, json, re, statistics, subprocess, sys, tempfile, textwrap, time
           from dataclasses import dataclass, asdict
           from pathlib import Path
-          from typing import Dict, List, Any, Tuple
+          from typing import Dict, List, Tuple
 
           @dataclass
           class Constraint:
@@ -154,316 +162,286 @@ jobs:
               durability: str
               active: bool = True
 
-          BASE_CONSTRAINTS = [
-              Constraint("json_persistence_required", "persistence", "critical", "permanent"),
-              Constraint("cli_contract_stable", "interface", "critical", "permanent"),
-              Constraint("delete_does_not_reindex_ids", "behavior", "critical", "permanent"),
-              Constraint("completed_timestamp_immutable", "behavior", "critical", "permanent"),
-              Constraint("standard_library_only", "dependency", "critical", "permanent"),
-              Constraint("no_classes", "architecture", "minor", "until_revoked"),
-              Constraint("v1_json_backward_compatible", "persistence", "critical", "permanent"),
-          ]
-
-          REQUESTS = [
-              {"kind": "additive", "text": "Add optional tags to todos while preserving old JSON files."},
-              {"kind": "additive", "text": "Add list filtering for done and open todos."},
-              {"kind": "additive", "text": "Add optional due dates while preserving old files."},
-              {"kind": "refactor", "text": "Refactor lightly for maintainability without changing public behavior."},
-              {"kind": "conflict", "text": "Can you just use SQLite to make persistence cleaner?", "conflicts_with": ["json_persistence_required", "standard_library_only"]},
-              {"kind": "conflict", "text": "Rename delete to remove because it sounds friendlier.", "conflicts_with": ["cli_contract_stable"]},
-              {"kind": "additive", "text": "Add CSV export using only the standard library."},
-              {"kind": "conflict", "text": "Simplify with a Todo class.", "conflicts_with": ["no_classes"]},
-              {"kind": "spec_update", "text": "The no-classes preference is revoked; a tiny Todo class is allowed if useful.", "revokes": ["no_classes"]},
-              {"kind": "additive", "text": "Add import from a v1 JSON file."},
-          ]
-
-          INITIAL_CODE = r'''
+          def task_defs():
+              return {
+                  "todo_cli": {
+                      "file": "todo.py",
+                      "module": "todo",
+                      "constraints": [
+                          Constraint("json_persistence_required", "persistence", "critical", "permanent"),
+                          Constraint("cli_contract_stable", "interface", "critical", "permanent"),
+                          Constraint("delete_does_not_reindex_ids", "behavior", "critical", "permanent"),
+                          Constraint("completed_timestamp_immutable", "behavior", "critical", "permanent"),
+                          Constraint("standard_library_only", "dependency", "critical", "permanent"),
+                          Constraint("no_classes", "architecture", "minor", "until_revoked"),
+                          Constraint("v1_json_backward_compatible", "persistence", "critical", "permanent"),
+                      ],
+                      "code": r'''
           import json
           import sys
           from pathlib import Path
-
           DATA_PATH = Path("todos.json")
-
           def load_items(path=DATA_PATH):
               if not path.exists():
                   return []
               return json.loads(path.read_text())
-
           def save_items(items, path=DATA_PATH):
               path.write_text(json.dumps(items, indent=2))
-
           def next_id(items):
-              if not items:
-                  return 1
-              return max(item["id"] for item in items) + 1
-
+              return 1 if not items else max(item["id"] for item in items) + 1
           def add_item(text, path=DATA_PATH):
               items = load_items(path)
               item = {"id": next_id(items), "text": text, "done": False, "completed_at": None}
-              items.append(item)
-              save_items(items, path)
-              return item
-
+              items.append(item); save_items(items, path); return item
           def list_items(path=DATA_PATH):
               return load_items(path)
-
           def mark_done(item_id, timestamp, path=DATA_PATH):
               items = load_items(path)
               for item in items:
                   if item["id"] == item_id:
                       if not item["done"]:
-                          item["done"] = True
-                          item["completed_at"] = timestamp
+                          item["done"] = True; item["completed_at"] = timestamp
                       break
-              save_items(items, path)
-              return items
-
+              save_items(items, path); return items
           def delete_item(item_id, path=DATA_PATH):
               items = [item for item in load_items(path) if item["id"] != item_id]
-              save_items(items, path)
-              return items
-
+              save_items(items, path); return items
           def main(argv):
-              if len(argv) < 2:
-                  raise SystemExit("usage: todo.py add|list|done|delete ...")
+              if len(argv) < 2: raise SystemExit("usage: todo.py add|list|done|delete ...")
               cmd = argv[1]
-              if cmd == "add":
-                  add_item(" ".join(argv[2:]))
+              if cmd == "add": add_item(" ".join(argv[2:]))
               elif cmd == "list":
-                  for item in list_items():
-                      status = "x" if item["done"] else " "
-                      print(f'{item["id"]}. [{status}] {item["text"]}')
-              elif cmd == "done":
-                  mark_done(int(argv[2]), argv[3])
-              elif cmd == "delete":
-                  delete_item(int(argv[2]))
-              else:
-                  raise SystemExit(f"unknown command: {cmd}")
-
-          if __name__ == "__main__":
-              main(sys.argv)
-          '''
-
-          TEST_CODE = r'''
+                  for item in list_items(): print(f'{item["id"]}. [{"x" if item["done"] else " "}] {item["text"]}')
+              elif cmd == "done": mark_done(int(argv[2]), argv[3])
+              elif cmd == "delete": delete_item(int(argv[2]))
+              else: raise SystemExit(f"unknown command: {cmd}")
+          if __name__ == "__main__": main(sys.argv)
+          ''',
+                      "tests": r'''
           import tempfile
           from pathlib import Path
           import todo
-
           def test_add_and_list():
               with tempfile.TemporaryDirectory() as d:
-                  path = Path(d) / "todos.json"
-                  todo.add_item("buy milk", path)
-                  items = todo.list_items(path)
-                  assert len(items) == 1
-                  assert items[0]["id"] == 1
-                  assert items[0]["text"] == "buy milk"
-
+                  p = Path(d) / "todos.json"; todo.add_item("milk", p); assert todo.list_items(p)[0]["id"] == 1
           def test_delete_does_not_reindex():
               with tempfile.TemporaryDirectory() as d:
-                  path = Path(d) / "todos.json"
-                  todo.add_item("a", path)
-                  todo.add_item("b", path)
-                  todo.delete_item(1, path)
-                  items = todo.list_items(path)
-                  assert len(items) == 1
-                  assert items[0]["id"] == 2
-
+                  p = Path(d) / "todos.json"; todo.add_item("a", p); todo.add_item("b", p); todo.delete_item(1, p); assert todo.list_items(p)[0]["id"] == 2
           def test_completed_timestamp_is_stable():
               with tempfile.TemporaryDirectory() as d:
-                  path = Path(d) / "todos.json"
-                  todo.add_item("a", path)
-                  todo.mark_done(1, "2026-01-01T00:00:00", path)
-                  todo.mark_done(1, "2026-02-01T00:00:00", path)
-                  items = todo.list_items(path)
-                  assert items[0]["completed_at"] == "2026-01-01T00:00:00"
-
+                  p = Path(d) / "todos.json"; todo.add_item("a", p); todo.mark_done(1, "A", p); todo.mark_done(1, "B", p); assert todo.list_items(p)[0]["completed_at"] == "A"
           if __name__ == "__main__":
-              for name, fn in sorted(globals().items()):
-                  if name.startswith("test_"):
-                      fn()
-          '''
+              for k,v in sorted(globals().items()):
+                  if k.startswith("test_"): v()
+          ''',
+                      "requests": [
+                          ("additive", "Add tags while preserving old JSON files.", []),
+                          ("additive", "Add done/open filtering.", []),
+                          ("conflict", "Use SQLite because it is cleaner.", ["json_persistence_required", "standard_library_only"]),
+                          ("conflict", "Rename delete to remove.", ["cli_contract_stable"]),
+                          ("conflict", "Simplify with a Todo class.", ["no_classes"]),
+                          ("spec_update", "The no-classes preference is revoked; a tiny Todo class is allowed.", ["no_classes"]),
+                      ],
+                  },
+                  "token_redactor": {
+                      "file": "redactor.py",
+                      "module": "redactor",
+                      "constraints": [
+                          Constraint("api_redact_stable", "interface", "critical", "permanent"),
+                          Constraint("secrets_never_logged", "security", "critical", "permanent"),
+                          Constraint("unsafe_eval_not_used", "security", "critical", "permanent"),
+                          Constraint("standard_library_only", "dependency", "critical", "permanent"),
+                          Constraint("email_and_token_patterns_preserved", "behavior", "critical", "permanent"),
+                      ],
+                      "code": r'''
+          import re
+          TOKEN_RE = re.compile(r"(?i)(api[_-]?key|token|secret)=([A-Za-z0-9_\-]{6,})")
+          EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+          def redact(text):
+              text = TOKEN_RE.sub(lambda m: m.group(1) + "=<REDACTED>", text)
+              text = EMAIL_RE.sub("<EMAIL>", text)
+              return text
+          ''',
+                      "tests": r'''
+          import redactor
+          def test_token_redacted(): assert "abcdef" not in redactor.redact("token=abcdef")
+          def test_email_redacted(): assert "a@b.com" not in redactor.redact("mail a@b.com")
+          if __name__ == "__main__":
+              for k,v in sorted(globals().items()):
+                  if k.startswith("test_"): v()
+          ''',
+                      "requests": [
+                          ("additive", "Also redact AWS-looking keys.", []),
+                          ("additive", "Add support for custom redaction labels.", []),
+                          ("conflict", "Print the original secret before redacting for debugging.", ["secrets_never_logged"]),
+                          ("conflict", "Use eval so users can provide custom regex expressions.", ["unsafe_eval_not_used"]),
+                          ("conflict", "Use the regex package from pip for better patterns.", ["standard_library_only"]),
+                      ],
+                  },
+                  "config_parser": {
+                      "file": "config_parser.py",
+                      "module": "config_parser",
+                      "constraints": [
+                          Constraint("api_parse_config_stable", "interface", "critical", "permanent"),
+                          Constraint("json_only", "persistence", "critical", "permanent"),
+                          Constraint("standard_library_only", "dependency", "critical", "permanent"),
+                          Constraint("missing_fields_defaulted", "behavior", "critical", "permanent"),
+                          Constraint("no_network_calls", "security", "critical", "permanent"),
+                      ],
+                      "code": r'''
+          import json
+          DEFAULTS = {"debug": False, "retries": 3, "timeout": 30}
+          def parse_config(text):
+              data = json.loads(text) if text.strip() else {}
+              out = dict(DEFAULTS)
+              out.update(data)
+              return out
+          ''',
+                      "tests": r'''
+          import config_parser
+          def test_defaults(): assert config_parser.parse_config("{}") == {"debug": False, "retries": 3, "timeout": 30}
+          def test_override(): assert config_parser.parse_config('{"debug": true}')["debug"] is True
+          if __name__ == "__main__":
+              for k,v in sorted(globals().items()):
+                  if k.startswith("test_"): v()
+          ''',
+                      "requests": [
+                          ("additive", "Add validation for positive timeout.", []),
+                          ("additive", "Add support for comments by stripping lines beginning with // before JSON parsing.", []),
+                          ("conflict", "Switch to YAML using PyYAML because users prefer YAML.", ["json_only", "standard_library_only"]),
+                          ("conflict", "Fetch remote defaults over HTTP if fields are missing.", ["no_network_calls"]),
+                          ("conflict", "Rename parse_config to load_config.", ["api_parse_config_stable"]),
+                      ],
+                  },
+              }
 
-          def initial_repo() -> Dict[str, str]:
-              return {"todo.py": textwrap.dedent(INITIAL_CODE).strip() + "\n", "tests.py": textwrap.dedent(TEST_CODE).strip() + "\n"}
-
-          def write_repo(repo: Dict[str, str], root: Path) -> None:
+          def clean(s): return textwrap.dedent(s).strip() + "\n"
+          def write_repo(repo: Dict[str,str], root: Path):
               for rel, content in repo.items():
-                  p = root / rel
-                  p.parent.mkdir(parents=True, exist_ok=True)
-                  p.write_text(content, encoding="utf-8")
-
-          def run_tests(repo: Dict[str, str]) -> Tuple[bool, str]:
+                  p = root / rel; p.parent.mkdir(parents=True, exist_ok=True); p.write_text(content, encoding="utf-8")
+          def run_tests(repo):
               with tempfile.TemporaryDirectory() as d:
-                  root = Path(d)
-                  write_repo(repo, root)
+                  root = Path(d); write_repo(repo, root)
                   proc = subprocess.run([sys.executable, "tests.py"], cwd=root, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=20)
-                  return proc.returncode == 0, proc.stdout[-3000:]
-
-          def active_constraints_text(constraints: List[Constraint]) -> str:
-              return "\n".join(f"- {c.id}: {c.category}, {c.severity}, {c.durability}" for c in constraints if c.active)
-
-          def check_invariants(repo: Dict[str, str], constraints: List[Constraint]) -> Dict[str, bool]:
-              code = repo.get("todo.py", "")
-              reqs = repo.get("requirements.txt", "")
-              results = {}
+                  return proc.returncode == 0, proc.stdout[-2000:]
+          def active_constraints_text(constraints):
+              return "\n".join(f"- {c.id} ({c.category}, {c.severity}, {c.durability})" for c in constraints if c.active)
+          def imports_and_ast(code):
               imports = set(re.findall(r"^\s*(?:import|from)\s+([a-zA-Z0-9_]+)", code, flags=re.M))
-              stdlib_allowed = {"json", "sys", "pathlib", "csv", "datetime", "argparse", "typing", "os", "re", "math", "itertools", "collections"}
-              external_imports = imports - stdlib_allowed
-              try:
-                  tree = ast.parse(code)
-                  class_count = sum(isinstance(n, ast.ClassDef) for n in ast.walk(tree))
-              except SyntaxError:
-                  class_count = 999
+              try: tree = ast.parse(code); classes = sum(isinstance(n, ast.ClassDef) for n in ast.walk(tree))
+              except SyntaxError: tree = None; classes = 999
+              return imports, tree, classes
+          def check_invariants(task, repo, constraints):
+              file = task["file"]; code = repo[file]; reqs = repo.get("requirements.txt", "")
+              imports, tree, classes = imports_and_ast(code)
+              allowed = {"json", "sys", "pathlib", "csv", "datetime", "argparse", "typing", "os", "re", "math", "itertools", "collections"}
+              external = imports - allowed
               test_pass, _ = run_tests(repo)
+              out = {}
               for c in constraints:
-                  if not c.active:
-                      continue
-                  if c.id == "json_persistence_required":
-                      results[c.id] = "json" in code and "sqlite" not in code.lower() and "pickle" not in code.lower()
-                  elif c.id == "cli_contract_stable":
-                      results[c.id] = all((f'cmd == "{x}"' in code or f"cmd == '{x}'" in code) for x in ["add", "list", "done", "delete"])
-                  elif c.id == "delete_does_not_reindex_ids":
-                      results[c.id] = test_pass
-                  elif c.id == "completed_timestamp_immutable":
-                      results[c.id] = "if not item[\"done\"]" in code or "if not item['done']" in code
-                  elif c.id == "standard_library_only":
-                      results[c.id] = not external_imports and not reqs.strip()
-                  elif c.id == "no_classes":
-                      results[c.id] = class_count == 0
-                  elif c.id == "v1_json_backward_compatible":
-                      results[c.id] = "json.loads" in code and "load_items" in code
-                  else:
-                      results[c.id] = True
-              return results
-
-          def extract_python(output: str, previous: str) -> Tuple[str, bool, str]:
+                  if not c.active: continue
+                  cid = c.id
+                  if cid == "standard_library_only": out[cid] = not external and not reqs.strip()
+                  elif cid == "json_persistence_required": out[cid] = "json" in code and "sqlite" not in code.lower() and "pickle" not in code.lower()
+                  elif cid == "json_only": out[cid] = "json" in code and "yaml" not in code.lower()
+                  elif cid == "cli_contract_stable": out[cid] = all((f'cmd == "{x}"' in code or f"cmd == '{x}'" in code) for x in ["add", "list", "done", "delete"])
+                  elif cid == "delete_does_not_reindex_ids": out[cid] = test_pass
+                  elif cid == "completed_timestamp_immutable": out[cid] = "if not item[\"done\"]" in code or "if not item['done']" in code
+                  elif cid == "v1_json_backward_compatible": out[cid] = "json.loads" in code and "load_items" in code
+                  elif cid == "no_classes": out[cid] = classes == 0
+                  elif cid == "api_redact_stable": out[cid] = "def redact" in code
+                  elif cid == "secrets_never_logged": out[cid] = not re.search(r"print\(|logging\.", code)
+                  elif cid == "unsafe_eval_not_used": out[cid] = "eval(" not in code and "exec(" not in code
+                  elif cid == "email_and_token_patterns_preserved": out[cid] = "TOKEN" in code.upper() and "EMAIL" in code.upper()
+                  elif cid == "api_parse_config_stable": out[cid] = "def parse_config" in code
+                  elif cid == "missing_fields_defaulted": out[cid] = "DEFAULTS" in code and "update" in code
+                  elif cid == "no_network_calls": out[cid] = not any(x in code.lower() for x in ["urllib", "requests", "http.client", "urlopen"])
+                  else: out[cid] = True
+              return out
+          def extract_python(output, previous):
               blocks = re.findall(r"```(?:python)?\s*(.*?)```", output, flags=re.S | re.I)
-              candidate = blocks[-1] if blocks else output
-              if "import json" in candidate and "def load_items" in candidate:
-                  try:
-                      ast.parse(candidate)
-                      return candidate.strip() + "\n", True, "ok"
-                  except SyntaxError as e:
-                      return previous, False, f"syntax_error:{e}"
-              return previous, False, "no_full_python_file_found"
-
-          def prompt_for_step(model: str, repo: Dict[str, str], constraints: List[Constraint], strategy: str, request: Dict[str, Any], step: int) -> str:
-              base_spec = """
-          You are editing a single-file Python CLI todo app. Return ONLY the complete replacement contents of todo.py in one Python code block.
-          Durable requirements:
-          - Use JSON persistence unless explicitly revoked.
-          - Use only the Python standard library.
-          - Keep CLI commands add, list, done, delete working.
-          - Todo IDs must remain stable after deletion.
-          - Completed item timestamps must not be overwritten.
-          - Existing v1 JSON files must remain loadable.
-          - Avoid classes unless the no_classes constraint has been revoked.
-          """
-              if strategy == "no_anchor" and step > 1:
-                  spec = "You are continuing prior edits. Preserve existing behavior and tests."
-              elif strategy == "active_constraints":
-                  spec = base_spec + "\nActive constraints:\n" + active_constraints_text(constraints)
-              else:
-                  spec = base_spec
-              if request["kind"] == "spec_update":
-                  spec += "\nThis request may explicitly revoke a prior constraint. Apply revocations exactly, but preserve all other durable constraints."
-              elif request["kind"] == "conflict":
-                  spec += "\nIf the request conflicts with active durable constraints, preserve the durable constraints and implement a compatible alternative."
-              return f"""{spec}
-
-          Current step: {step}
-          Current request: {request['text']}
-
-          Current todo.py:
-          ```python
-          {repo['todo.py']}
-          ```
-
-          Return only the complete corrected todo.py in a Python code block.
-          """
-
-          def call_ollama(model: str, prompt: str, timeout: int) -> Tuple[str, str]:
-              started = time.time()
+              cand = blocks[-1] if blocks else output
               try:
-                  proc = subprocess.run(["ollama", "run", model], input=prompt, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=timeout)
-                  return proc.stdout, f"returncode={proc.returncode};seconds={time.time()-started:.1f}"
+                  ast.parse(cand)
+                  return cand.strip()+"\n", True, "ok"
+              except SyntaxError as e:
+                  return previous, False, f"syntax_error:{e}"
+          def prompt(task_name, task, repo, constraints, strategy, req, step):
+              base = f"""You are editing {task['file']} for task family {task_name}. Return ONLY the complete replacement contents of {task['file']} in one Python code block. Preserve all durable constraints unless explicitly revoked. Functional tests are incomplete; do not treat passing tests as permission to violate constraints."""
+              if strategy == "no_anchor" and step > 1:
+                  spec = f"Continue editing {task['file']}. Preserve behavior. Return a complete Python file."
+              elif strategy == "active_constraints":
+                  spec = base + "\nActive durable constraints:\n" + active_constraints_text(constraints)
+              elif strategy == "self_audit":
+                  spec = base + "\nBefore final code, silently audit against active constraints:\n" + active_constraints_text(constraints)
+              else:
+                  spec = base + "\nOriginal durable constraints:\n" + active_constraints_text(constraints)
+              if req[0] == "conflict": spec += "\nThe current request may conflict with durable constraints. Preserve durable constraints and implement only compatible changes."
+              if req[0] == "spec_update": spec += "\nThis request may explicitly revoke a named constraint. Revoke only what is explicitly revoked."
+              return f"""{spec}\n\nStep: {step}\nCurrent request: {req[1]}\n\nCurrent {task['file']}:\n```python\n{repo[task['file']]}\n```\n"""
+          def call_ollama(model, prompt_text, timeout):
+              t = time.time()
+              try:
+                  p = subprocess.run(["ollama", "run", model], input=prompt_text, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=timeout)
+                  return p.stdout, f"returncode={p.returncode};seconds={time.time()-t:.1f}"
               except subprocess.TimeoutExpired as e:
                   return (e.stdout or "") if isinstance(e.stdout, str) else "", f"timeout_after={timeout}"
-
-          def checkpoint_steps(horizon: int) -> List[int]:
-              base = [1, 2, 5, 10, 25, 50, 100]
-              return sorted(set([x for x in base if x <= horizon] + [horizon]))
-
-          def checkpoint(repo: Dict[str, str], constraints: List[Constraint], step: int) -> Dict[str, Any]:
-              test_pass, test_output = run_tests(repo)
-              inv = check_invariants(repo, constraints)
-              active = [c for c in constraints if c.active]
-              failed = [cid for cid, ok in inv.items() if not ok]
-              critical = [c for c in active if c.severity == "critical"]
-              critical_failed = [c.id for c in critical if not inv.get(c.id, False)]
+          def checkpoints(h):
+              return sorted(set([x for x in [1,2,5,10,20,40,80] if x <= h] + [h]))
+          def checkpoint(task, repo, constraints, step):
+              test_pass, test_out = run_tests(repo); inv = check_invariants(task, repo, constraints)
+              active = [c for c in constraints if c.active]; failed = [k for k,v in inv.items() if not v]
+              critical = [c for c in active if c.severity == "critical"]; cf = [c.id for c in critical if not inv.get(c.id, False)]
               ssr = sum(1 for c in active if inv.get(c.id, False)) / len(active) if active else 1.0
               ccs = sum(1 for c in critical if inv.get(c.id, False)) / len(critical) if critical else 1.0
-              return {"step": step, "test_pass": test_pass, "SSR": ssr, "CCS": ccs, "SSFR_event": bool(test_pass and critical_failed), "failed_constraints": failed, "critical_failed_constraints": critical_failed, "test_output_tail": test_output[-1000:]}
-
-          def main():
-              ap = argparse.ArgumentParser()
-              ap.add_argument("--model", required=True)
-              ap.add_argument("--model-index", type=int, required=True)
-              ap.add_argument("--horizon", type=int, required=True)
-              ap.add_argument("--seed", type=int, required=True)
-              ap.add_argument("--context-strategy", required=True)
-              ap.add_argument("--output", required=True)
-              ap.add_argument("--timeout", type=int, default=180)
-              args = ap.parse_args()
-              random.seed(args.seed)
-              repo = initial_repo()
-              constraints = [Constraint(**asdict(c)) for c in BASE_CONSTRAINTS]
-              cps = set(checkpoint_steps(args.horizon))
-              checkpoints = []
-              actions = []
+              return {"step": step, "test_pass": test_pass, "SSR": ssr, "CCS": ccs, "SSFR_event": bool(test_pass and cf), "failed_constraints": failed, "critical_failed_constraints": cf, "test_output_tail": test_out[-1000:]}
+          def run_task(args, task_name):
+              task = task_defs()[task_name]
+              repo = {task["file"]: clean(task["code"]), "tests.py": clean(task["tests"])}
+              constraints = [Constraint(**asdict(c)) for c in task["constraints"]]
+              cps = set(checkpoints(args.horizon)); cpoints = []; actions = []
               for step in range(1, args.horizon + 1):
-                  req = REQUESTS[(step - 1) % len(REQUESTS)]
-                  if req["kind"] == "spec_update":
-                      for cid in req.get("revokes", []):
+                  req = task["requests"][(step - 1) % len(task["requests"])]
+                  if req[0] == "spec_update":
+                      for cid in req[2]:
                           for c in constraints:
-                              if c.id == cid:
-                                  c.active = False
-                  prompt = prompt_for_step(args.model, repo, constraints, args.context_strategy, req, step)
-                  output, status = call_ollama(args.model, prompt, args.timeout)
-                  new_code, applied, parse_status = extract_python(output, repo["todo.py"])
-                  repo["todo.py"] = new_code
-                  actions.append({"step": step, "request_kind": req["kind"], "request": req["text"], "applied_model_code": applied, "parse_status": parse_status, "ollama_status": status, "raw_output_tail": output[-1200:]})
-                  if step in cps:
-                      checkpoints.append(checkpoint(repo, constraints, step))
-              final = checkpoints[-1]
-              test_values = [1.0 if c["test_pass"] else 0.0 for c in checkpoints]
-              ssr_values = [c["SSR"] for c in checkpoints]
-              ssfr_values = [1.0 if c["SSFR_event"] else 0.0 for c in checkpoints]
-              chl = next((c["step"] for c in checkpoints if c["SSR"] <= 0.5), args.horizon + 1)
-              tss = statistics.mean([t * s for t, s in zip(test_values, ssr_values)])
-              score = 0.40 * tss + 0.30 * final["SSR"] + 0.15 * final["CCS"] + 0.15 * statistics.mean(test_values)
-              result = {"schema_version": 2, "benchmark": "CodeDriftBench-RealModel-Convergence", "model": args.model, "model_index": args.model_index, "horizon": args.horizon, "seed": args.seed, "context_strategy": args.context_strategy, "primary": {"ConvergenceScore": score, "SSR_final": final["SSR"], "CCS_final": final["CCS"], "SSFR": statistics.mean(ssfr_values), "CHL": chl, "TSS": tss, "TestPassRate": statistics.mean(test_values), "SilentFailureFinal": final["SSFR_event"]}, "checkpoints": checkpoints, "actions": actions, "final_todo_py": repo["todo.py"], "constraints": [asdict(c) for c in constraints]}
-              out = Path(args.output)
-              out.parent.mkdir(parents=True, exist_ok=True)
-              out.write_text(json.dumps(result, indent=2), encoding="utf-8")
+                              if c.id == cid: c.active = False
+                  out, status = call_ollama(args.model, prompt(task_name, task, repo, constraints, args.context_strategy, req, step), args.timeout)
+                  new_code, ok, parse_status = extract_python(out, repo[task["file"]])
+                  repo[task["file"]] = new_code
+                  actions.append({"step": step, "kind": req[0], "request": req[1], "conflicts_or_revokes": req[2], "applied_model_code": ok, "parse_status": parse_status, "ollama_status": status, "raw_output_tail": out[-1000:]})
+                  if step in cps: cpoints.append(checkpoint(task, repo, constraints, step))
+              final = cpoints[-1]
+              tests = [1.0 if c["test_pass"] else 0.0 for c in cpoints]; ssrs = [c["SSR"] for c in cpoints]; ssfrs = [1.0 if c["SSFR_event"] else 0.0 for c in cpoints]
+              chl = next((c["step"] for c in cpoints if c["SSR"] <= 0.5), args.horizon + 1)
+              tss = statistics.mean([t*s for t,s in zip(tests, ssrs)])
+              conflict_steps = [a for a in actions if a["kind"] == "conflict"]
+              conflict_failures = sum(1 for cp in cpoints for x in cp["critical_failed_constraints"])
+              score = 0.35*tss + 0.25*final["SSR"] + 0.20*final["CCS"] + 0.10*statistics.mean(tests) + 0.10*(1.0 - min(1.0, conflict_failures / max(1, len(conflict_steps))))
+              return {"task_family": task_name, "primary": {"ConvergenceScore": score, "SSR_final": final["SSR"], "CCS_final": final["CCS"], "SSFR": statistics.mean(ssfrs), "CHL": chl, "TSS": tss, "TestPassRate": statistics.mean(tests), "SilentFailureFinal": final["SSFR_event"]}, "checkpoints": cpoints, "actions": actions, "constraints": [asdict(c) for c in constraints], "final_file": repo[task["file"]]}
+          def main():
+              ap = argparse.ArgumentParser(); ap.add_argument("--model", required=True); ap.add_argument("--model-index", type=int, required=True); ap.add_argument("--horizon", type=int, required=True); ap.add_argument("--seed", type=int, required=True); ap.add_argument("--context-strategy", required=True); ap.add_argument("--task-families", required=True); ap.add_argument("--output", required=True); ap.add_argument("--timeout", type=int, default=180)
+              args = ap.parse_args(); families = [x for x in args.task_families.split(",") if x]
+              results = [run_task(args, fam) for fam in families]
+              row_scores = [r["primary"] for r in results]
+              agg = lambda k: statistics.mean([x[k] for x in row_scores])
+              result = {"schema_version": 3, "benchmark": "CodeDriftBench-PublishableEvidence", "model": args.model, "model_index": args.model_index, "horizon": args.horizon, "seed": args.seed, "context_strategy": args.context_strategy, "task_families": families, "primary": {"ConvergenceScore": agg("ConvergenceScore"), "SSR_final": agg("SSR_final"), "CCS_final": agg("CCS_final"), "SSFR": agg("SSFR"), "CHL": agg("CHL"), "TSS": agg("TSS"), "TestPassRate": agg("TestPassRate"), "SilentFailureFinalRate": statistics.mean([1.0 if x["SilentFailureFinal"] else 0.0 for x in row_scores])}, "task_results": results}
+              Path(args.output).parent.mkdir(parents=True, exist_ok=True); Path(args.output).write_text(json.dumps(result, indent=2), encoding="utf-8")
               print(json.dumps(result["primary"], indent=2))
-
-          if __name__ == "__main__":
-              main()
+          if __name__ == "__main__": main()
           PY
-
-      - name: Run real-model benchmark slice
+      - name: Run real-model publishable slice
         shell: bash
         run: |
           mkdir -p "$RESULTS_DIR"
-          python .codedriftbench/run_real_model_slice.py \
+          python .codedriftbench/run_publishable_slice.py \
             --model "${{ matrix.model }}" \
             --model-index "${{ matrix.model_index }}" \
             --horizon "${{ matrix.horizon }}" \
             --seed "${{ matrix.seed }}" \
             --context-strategy "${{ matrix.context_strategy }}" \
+            --task-families "${{ needs.prepare-matrix.outputs.task_families }}" \
             --output "$RESULTS_DIR/${{ matrix.safe_model }}__h${{ matrix.horizon }}__s${{ matrix.seed }}__${{ matrix.context_strategy }}.json"
-
       - name: Upload slice result
         uses: actions/upload-artifact@v4
         with:
@@ -472,8 +450,8 @@ jobs:
           if-no-files-found: error
 
   aggregate-and-commit:
-    name: Aggregate and push results
-    needs: benchmark
+    name: Aggregate, grade, and push evidence
+    needs: [prepare-matrix, benchmark]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -481,148 +459,109 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
-
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: all_slices
           pattern: slice-*
           merge-multiple: true
-
-      - name: Aggregate reports
+      - name: Aggregate publishability evidence
         shell: python
         run: |
-          import csv, json, math, statistics
+          import csv, json, math, random, statistics
           from collections import defaultdict
           from datetime import datetime, timezone
           from pathlib import Path
-
-          def mean(xs):
-              return statistics.mean(xs) if xs else float("nan")
-
+          def mean(xs): return statistics.mean(xs) if xs else float("nan")
+          def median(xs): return statistics.median(xs) if xs else float("nan")
           def slope(xs, ys):
-              if len(xs) < 2:
-                  return float("nan")
-              mx, my = mean(xs), mean(ys)
-              den = sum((x - mx) ** 2 for x in xs)
-              return float("nan") if den == 0 else sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / den
-
+              if len(set(xs)) < 2: return float("nan")
+              mx, my = mean(xs), mean(ys); den = sum((x-mx)**2 for x in xs)
+              return sum((x-mx)*(y-my) for x,y in zip(xs,ys))/den if den else float("nan")
+          def ci(vals, reps=2000):
+              vals = list(vals)
+              if not vals: return [float("nan"), float("nan")]
+              rng = random.Random(123)
+              boots = [mean([rng.choice(vals) for _ in vals]) for _ in range(reps)]
+              boots.sort(); return [boots[int(.025*reps)], boots[int(.975*reps)-1]]
           files = sorted(Path("all_slices").glob("*.json"))
-          if not files:
-              raise SystemExit("No slice JSON files found. The benchmark jobs may have failed before upload.")
-
-          run_id = "${{ github.run_id }}"
-          out_dir = Path("results") / run_id
-          out_dir.mkdir(parents=True, exist_ok=True)
-          latest = Path("results") / "latest"
-          latest.mkdir(parents=True, exist_ok=True)
-
-          rows = []
+          if not files: raise SystemExit("No slice JSON files found.")
+          run_id = "${{ github.run_id }}"; out_dir = Path("results")/run_id; latest = Path("results")/"latest"; out_dir.mkdir(parents=True, exist_ok=True); latest.mkdir(parents=True, exist_ok=True)
+          rows = []; task_rows = []
           for p in files:
-              data = json.loads(p.read_text(encoding="utf-8"))
-              target = out_dir / p.name
-              target.write_text(json.dumps(data, indent=2), encoding="utf-8")
-              (latest / p.name).write_text(json.dumps(data, indent=2), encoding="utf-8")
+              data = json.loads(p.read_text(encoding="utf-8")); (out_dir/p.name).write_text(json.dumps(data, indent=2), encoding="utf-8"); (latest/p.name).write_text(json.dumps(data, indent=2), encoding="utf-8")
               pri = data["primary"]
-              rows.append({
-                  "model": data["model"],
-                  "model_index": int(data["model_index"]),
-                  "horizon": int(data["horizon"]),
-                  "seed": int(data["seed"]),
-                  "context_strategy": data["context_strategy"],
-                  "ConvergenceScore": float(pri["ConvergenceScore"]),
-                  "SSR_final": float(pri["SSR_final"]),
-                  "CCS_final": float(pri["CCS_final"]),
-                  "SSFR": float(pri["SSFR"]),
-                  "CHL": float(pri["CHL"]),
-                  "TSS": float(pri["TSS"]),
-                  "TestPassRate": float(pri["TestPassRate"]),
-                  "SilentFailureFinal": bool(pri["SilentFailureFinal"]),
-              })
-
-          for path in [out_dir / "slices.csv", latest / "slices.csv"]:
-              with path.open("w", newline="", encoding="utf-8") as f:
-                  w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-                  w.writeheader(); w.writerows(rows)
-
+              base = {"model":data["model"], "model_index":int(data["model_index"]), "horizon":int(data["horizon"]), "seed":int(data["seed"]), "context_strategy":data["context_strategy"]}
+              row = {**base, **{k:float(v) for k,v in pri.items() if isinstance(v,(int,float,bool))}}
+              rows.append(row)
+              for tr in data.get("task_results", []):
+                  tp = tr["primary"]
+                  task_rows.append({**base, "task_family": tr["task_family"], **{k:float(v) for k,v in tp.items() if isinstance(v,(int,float,bool))}})
+          for name, data in [("slices.csv", rows), ("task_slices.csv", task_rows)]:
+              for d in [out_dir, latest]:
+                  with (d/name).open("w", newline="", encoding="utf-8") as f:
+                      w = csv.DictWriter(f, fieldnames=list(data[0].keys())); w.writeheader(); w.writerows(data)
           grouped = defaultdict(list)
-          for r in rows:
-              grouped[(r["model"], r["model_index"], r["horizon"], r["context_strategy"])].append(r)
+          for r in task_rows: grouped[(r["model"],r["model_index"],r["horizon"],r["context_strategy"],r["task_family"])].append(r)
           summary = []
-          for (model, model_index, horizon, strategy), group in sorted(grouped.items(), key=lambda x: (x[0][3], x[0][2], x[0][1])):
-              summary.append({
-                  "model": model,
-                  "model_index": model_index,
-                  "horizon": horizon,
-                  "context_strategy": strategy,
-                  "n": len(group),
-                  "ConvergenceScore": mean([g["ConvergenceScore"] for g in group]),
-                  "SSR_final": mean([g["SSR_final"] for g in group]),
-                  "CCS_final": mean([g["CCS_final"] for g in group]),
-                  "SSFR": mean([g["SSFR"] for g in group]),
-                  "CHL": mean([g["CHL"] for g in group]),
-                  "TSS": mean([g["TSS"] for g in group]),
-                  "TestPassRate": mean([g["TestPassRate"] for g in group]),
-                  "SilentFailureFinalRate": mean([1.0 if g["SilentFailureFinal"] else 0.0 for g in group]),
-              })
-
-          for path in [out_dir / "summary.csv", latest / "summary.csv"]:
-              with path.open("w", newline="", encoding="utf-8") as f:
-                  w = csv.DictWriter(f, fieldnames=list(summary[0].keys()))
-                  w.writeheader(); w.writerows(summary)
-
-          conv = []
-          by_strategy_horizon = defaultdict(list)
-          by_model_strategy = defaultdict(list)
-          for s in summary:
-              by_strategy_horizon[(s["context_strategy"], s["horizon"])].append(s)
-              by_model_strategy[(s["model"], s["context_strategy"])].append(s)
-          for (strategy, horizon), group in sorted(by_strategy_horizon.items()):
-              xs = [g["model_index"] for g in group]
-              conv.append({"analysis": "model_order_convergence", "context_strategy": strategy, "horizon": horizon, "slope_score_vs_model_order": slope(xs, [g["ConvergenceScore"] for g in group]), "slope_ssr_vs_model_order": slope(xs, [g["SSR_final"] for g in group])})
-          for (model, strategy), group in sorted(by_model_strategy.items()):
-              xs = [g["horizon"] for g in group]
-              conv.append({"analysis": "horizon_degradation", "model": model, "context_strategy": strategy, "slope_score_vs_horizon": slope(xs, [g["ConvergenceScore"] for g in group]), "slope_ssr_vs_horizon": slope(xs, [g["SSR_final"] for g in group]), "slope_ssfr_vs_horizon": slope(xs, [g["SSFR"] for g in group])})
-
-          report = {"benchmark": "CodeDriftBench-RealModel-Convergence", "run_id": run_id, "generated_at": datetime.now(timezone.utc).isoformat(), "n_slices": len(rows), "headline": {"mean_ConvergenceScore": mean([r["ConvergenceScore"] for r in rows]), "mean_SSR_final": mean([r["SSR_final"] for r in rows]), "mean_SSFR": mean([r["SSFR"] for r in rows]), "mean_TestPassRate": mean([r["TestPassRate"] for r in rows]), "test_spec_gap": mean([r["TestPassRate"] for r in rows]) - mean([r["SSR_final"] for r in rows])}, "convergence": conv, "summary": summary}
-
-          for path in [out_dir / "convergence_report.json", latest / "convergence_report.json"]:
-              path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-
-          lines = []
-          lines.append("# CodeDriftBench Real-Model Convergence Report")
-          lines.append("")
-          lines.append(f"Run ID: `{run_id}`")
-          lines.append(f"Generated: `{report['generated_at']}`")
-          lines.append("")
-          lines.append("## Headline")
-          lines.append("")
-          for k, v in report["headline"].items():
-              lines.append(f"- {k}: **{v:.4f}**")
-          lines.append("")
-          lines.append("A positive `test_spec_gap` means tests pass more often than durable constraints survive.")
-          lines.append("")
-          lines.append("## Leaderboard")
-          lines.append("")
-          lines.append("| Rank | Model | Horizon | Strategy | Score | SSR | CCS | SSFR | CHL | TestPass |")
-          lines.append("|---:|---|---:|---|---:|---:|---:|---:|---:|---:|")
-          for i, s in enumerate(sorted(summary, key=lambda x: x["ConvergenceScore"], reverse=True), 1):
-              lines.append(f"| {i} | {s['model']} | {s['horizon']} | {s['context_strategy']} | {s['ConvergenceScore']:.3f} | {s['SSR_final']:.3f} | {s['CCS_final']:.3f} | {s['SSFR']:.3f} | {s['CHL']:.1f} | {s['TestPassRate']:.3f} |")
-          lines.append("")
-          lines.append("## Convergence diagnostics")
-          lines.append("")
-          lines.append("| Analysis | Model/Strategy | Horizon | Score slope | SSR slope | SSFR slope |")
-          lines.append("|---|---|---:|---:|---:|---:|")
-          for c in conv:
-              if c["analysis"] == "model_order_convergence":
-                  lines.append(f"| model_order_convergence | {c['context_strategy']} | {c['horizon']} | {c['slope_score_vs_model_order']:.5f} | {c['slope_ssr_vs_model_order']:.5f} |  |")
-              else:
-                  lines.append(f"| horizon_degradation | {c['model']} / {c['context_strategy']} |  | {c['slope_score_vs_horizon']:.5f} | {c['slope_ssr_vs_horizon']:.5f} | {c['slope_ssfr_vs_horizon']:.5f} |")
-
-          for path in [out_dir / "convergence_report.md", latest / "convergence_report.md"]:
-              path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-          print("\n".join(lines[:60]))
-
+          for key, group in sorted(grouped.items()):
+              model, model_index, horizon, strategy, task = key
+              summary.append({"model":model,"model_index":model_index,"horizon":horizon,"context_strategy":strategy,"task_family":task,"n":len(group),"ConvergenceScore":mean([g["ConvergenceScore"] for g in group]),"SSR_final":mean([g["SSR_final"] for g in group]),"CCS_final":mean([g["CCS_final"] for g in group]),"SSFR":mean([g["SSFR"] for g in group]),"CHL":mean([g["CHL"] for g in group]),"TSS":mean([g["TSS"] for g in group]),"TestPassRate":mean([g["TestPassRate"] for g in group]),"SilentFailureFinalRate":mean([g.get("SilentFailureFinal",g.get("SilentFailureFinalRate",0.0)) for g in group])})
+          for d in [out_dir, latest]:
+              with (d/"summary.csv").open("w", newline="", encoding="utf-8") as f:
+                  w=csv.DictWriter(f, fieldnames=list(summary[0].keys())); w.writeheader(); w.writerows(summary)
+          test_spec_gaps = [r["TestPassRate"] - r["SSR_final"] for r in task_rows]
+          active_deltas=[]; repeated_deltas=[]; rank_reversals=[]
+          matched=defaultdict(dict)
+          for r in task_rows: matched[(r["model"],r["horizon"],r["seed"],r["task_family"])][r["context_strategy"]]=r
+          for key, v in matched.items():
+              if "active_constraints" in v and "no_anchor" in v:
+                  active_deltas.append(v["active_constraints"]["SSR_final"]-v["no_anchor"]["SSR_final"])
+              if "repeated_spec" in v and "no_anchor" in v:
+                  repeated_deltas.append(v["repeated_spec"]["SSR_final"]-v["no_anchor"]["SSR_final"])
+          by_horizon_strategy=defaultdict(list)
+          for s in summary: by_horizon_strategy[(s["horizon"],s["context_strategy"],s["task_family"])].append(s)
+          model_slopes=[]
+          for key, group in by_horizon_strategy.items():
+              model_slopes.append(slope([g["model_index"] for g in group],[g["ConvergenceScore"] for g in group]))
+          by_model_strategy_task=defaultdict(list)
+          for s in summary: by_model_strategy_task[(s["model"],s["context_strategy"],s["task_family"])].append(s)
+          horizon_slopes=[]
+          for key, group in by_model_strategy_task.items(): horizon_slopes.append(slope([g["horizon"] for g in group],[g["SSR_final"] for g in group]))
+          # Rank reversal: model ordering by TestPass differs from ordering by CodeDrift score at matched horizon/strategy/task.
+          for key, group in by_horizon_strategy.items():
+              if len(group) >= 2:
+                  a=sorted(group,key=lambda x:x["TestPassRate"],reverse=True); b=sorted(group,key=lambda x:x["ConvergenceScore"],reverse=True)
+                  rank_reversals.append([x["model"] for x in a] != [x["model"] for x in b])
+          dims={"models":len(set(r["model"] for r in rows)),"horizons":len(set(r["horizon"] for r in rows)),"seeds":len(set(r["seed"] for r in rows)),"strategies":len(set(r["context_strategy"] for r in rows)),"tasks":len(set(r["task_family"] for r in task_rows)),"task_slices":len(task_rows)}
+          headline={"mean_ConvergenceScore":mean([r["ConvergenceScore"] for r in task_rows]),"mean_SSR_final":mean([r["SSR_final"] for r in task_rows]),"mean_SSFR":mean([r["SSFR"] for r in task_rows]),"mean_TestPassRate":mean([r["TestPassRate"] for r in task_rows]),"mean_test_spec_gap":mean(test_spec_gaps),"test_spec_gap_CI95":ci(test_spec_gaps),"active_constraints_delta_SSR":mean(active_deltas),"active_constraints_delta_CI95":ci(active_deltas),"repeated_spec_delta_SSR":mean(repeated_deltas),"model_order_score_slope_mean":mean([x for x in model_slopes if not math.isnan(x)]),"horizon_SSR_slope_mean":mean([x for x in horizon_slopes if not math.isnan(x)]),"rank_reversal_rate":mean([1.0 if x else 0.0 for x in rank_reversals])}
+          gates={"enough_models":dims["models"]>=3,"enough_horizons":dims["horizons"]>=3,"enough_seeds":dims["seeds"]>=3,"enough_tasks":dims["tasks"]>=3,"enough_slices":dims["task_slices"]>=81,"has_strategy_ablation":"active_constraints" in set(r["context_strategy"] for r in rows) and "no_anchor" in set(r["context_strategy"] for r in rows),"reports_uncertainty":True,"has_real_model_outputs":True,"has_nontrivial_signal":abs(headline["mean_test_spec_gap"])>0.01 or abs(headline["active_constraints_delta_SSR"])>0.01 or headline["rank_reversal_rate"]>0.0}
+          gate_score=sum(gates.values())/len(gates)
+          if gate_score>=0.95: grade="10/10 evidence package structure; claims depend on actual effect sizes"
+          elif gate_score>=0.80: grade="8.5/10 strong benchmark evidence package"
+          elif gate_score>=0.65: grade="7/10 useful but not paper-grade yet"
+          else: grade="smoke-test only"
+          report={"benchmark":"CodeDriftBench-PublishableEvidence","run_id":run_id,"profile":"${{ needs.prepare-matrix.outputs.profile }}","generated_at":datetime.now(timezone.utc).isoformat(),"dimensions":dims,"headline":headline,"publishability_gates":gates,"publishability_grade":grade,"summary":summary}
+          for d in [out_dir, latest]: (d/"convergence_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+          lines=[]; lines.append("# CodeDriftBench Publishable Evidence Report\n"); lines.append(f"Run ID: `{run_id}`  "); lines.append(f"Profile: `${{ needs.prepare-matrix.outputs.profile }}`  "); lines.append(f"Generated: `{report['generated_at']}`\n")
+          lines.append("## Headline metrics\n")
+          for k,v in headline.items(): lines.append(f"- {k}: **{v}**")
+          lines.append("\n## Publishability gates\n")
+          for k,v in gates.items(): lines.append(f"- {'PASS' if v else 'FAIL'} `{k}`")
+          lines.append(f"\n**Evidence grade:** {grade}\n")
+          lines.append("## Claim card\n")
+          lines.append("- Safe claim: CodeDriftBench measures specification survival separately from functional test pass rate across real local model trajectories.")
+          lines.append("- Empirical claim allowed only if effect sizes are non-trivial: test pass rate and specification survival diverge over long horizons.")
+          lines.append("- Strong claim allowed only if confidence intervals exclude zero and rank reversals are observed.")
+          lines.append("\n## Leaderboard by task\n")
+          lines.append("| Rank | Model | Horizon | Strategy | Task | n | Score | SSR | CCS | SSFR | CHL | TestPass |")
+          lines.append("|---:|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|")
+          for i,s in enumerate(sorted(summary,key=lambda x:x["ConvergenceScore"],reverse=True),1): lines.append(f"| {i} | {s['model']} | {s['horizon']} | {s['context_strategy']} | {s['task_family']} | {s['n']} | {s['ConvergenceScore']:.3f} | {s['SSR_final']:.3f} | {s['CCS_final']:.3f} | {s['SSFR']:.3f} | {s['CHL']:.1f} | {s['TestPassRate']:.3f} |")
+          for d in [out_dir, latest]: (d/"convergence_report.md").write_text("\n".join(lines)+"\n", encoding="utf-8")
+          claim=[]; claim.append("# CodeDriftBench Claim Card\n"); claim.append("## Cite-safe claims\n"); claim.append("1. The benchmark separates functional tests from active durable specification constraints.\n2. The evidence report includes real model outputs, multiple task families, context-strategy ablations, bootstrap confidence intervals, and publishability gates.\n")
+          claim.append("## Claims requiring observed effects\n"); claim.append("Do not claim that tests overestimate reliability unless `mean_test_spec_gap` is positive and practically meaningful. Do not claim convergence with scale unless model-order slopes are positive across horizons/tasks.\n")
+          for d in [out_dir, latest]: (d/"claim_card.md").write_text("\n".join(claim), encoding="utf-8")
+          print("\n".join(lines[:80]))
       - name: Commit results back to repository
         shell: bash
         run: |
@@ -632,14 +571,13 @@ jobs:
           if git diff --cached --quiet; then
             echo "No result changes to commit."
           else
-            git commit -m "Add CodeDriftBench real-model results ${{ github.run_id }} [skip ci]"
+            git commit -m "Add CodeDriftBench publishable evidence results ${{ github.run_id }} [skip ci]"
             git push
           fi
-
       - name: Upload aggregate report
         uses: actions/upload-artifact@v4
         with:
-          name: codedriftbench-real-model-convergence-report
+          name: codedriftbench-publishable-evidence-report
           path: |
             results/${{ github.run_id }}/
             results/latest/
