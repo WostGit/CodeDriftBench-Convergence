@@ -40,3 +40,4 @@ jobs:
         run: |
           echo "Dispatched codedriftbench-convergence.yml with a short real smoke run."
           echo "Expected output path after completion: results/smoke/latest/."
+          echo "This short run is designed to prove execution and result commits before larger runs."
