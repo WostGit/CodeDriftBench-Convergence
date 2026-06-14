@@ -177,10 +177,14 @@ jobs:
       - name: Aggregate report
         shell: python
         run: |
-          import json, statistics, time
+          import json, os, shutil, statistics, time
           from pathlib import Path
-          out = Path('results/two_minute/latest')
-          out.mkdir(parents=True, exist_ok=True)
+          run_id = os.environ.get('GITHUB_RUN_ID', 'local')
+          base = Path('results/two_minute')
+          latest = base / 'latest'
+          run_dir = base / 'runs' / run_id
+          for d in (latest, run_dir):
+              d.mkdir(parents=True, exist_ok=True)
           rows = []
           for p in sorted(Path('shard_results').glob('result.json')):
               rows.append(json.loads(p.read_text()))
@@ -190,6 +194,7 @@ jobs:
           mean_duration = statistics.mean([r['duration_seconds'] for r in rows]) if rows else 0.0
           report = {
             'benchmark': 'CodeDriftBench-TwoMinuteParallelSmoke',
+            'run_id': run_id,
             'expected_shards': expected,
             'observed_shards': observed,
             'complete': observed == expected,
@@ -199,12 +204,12 @@ jobs:
             'generated_at_epoch': int(time.time()),
             'rows': rows,
             'claim': 'Fast parallel execution/commit probe only; not publishable benchmark evidence.',
-            'note': 'Triggered after workflow creation to verify parallel free-runner execution.'
+            'note': 'Conflict-safe layout: immutable run directory plus latest pointer.'
           }
-          (out / 'report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
           lines = [
             '# CodeDriftBench Two-Minute Parallel Smoke Report',
             '',
+            f"Run ID: `{run_id}`",
             f"Complete: **{report['complete']}** ({observed}/{expected} shards)",
             f"Mean score: **{mean_score:.3f}**",
             f"Mean model duration: **{mean_duration:.1f}s**",
@@ -216,20 +221,29 @@ jobs:
           for r in rows:
               lines.append(f"| {r['case_id']} | {r['model']} | {r['duration_seconds']}s | {r['return_code']} | {r['score']:.3f} |")
           lines += ['', '## Claim', report['claim']]
-          (out / 'report.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          for d in (latest, run_dir):
+              (d / 'report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+              (d / 'report.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
           print('\n'.join(lines))
 
-      - name: Commit report
+      - name: Commit report conflict-safely
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add results/two_minute/latest/
+          cp -R results/two_minute /tmp/two_minute_results
+          git reset --hard HEAD
+          git pull --rebase origin main
+          rm -rf results/two_minute/latest
+          mkdir -p results/two_minute
+          cp -R /tmp/two_minute_results/latest results/two_minute/latest
+          mkdir -p results/two_minute/runs
+          cp -R /tmp/two_minute_results/runs/$GITHUB_RUN_ID results/two_minute/runs/$GITHUB_RUN_ID
+          git add results/two_minute/latest results/two_minute/runs/$GITHUB_RUN_ID
           if git diff --cached --quiet; then
             echo "No two-minute report changes to commit."
           else
             git commit -m "Add two-minute parallel CodeDriftBench smoke report $GITHUB_RUN_ID [skip ci]"
-            git pull --rebase origin main
             git push
           fi
