@@ -98,7 +98,7 @@ jobs:
       - name: Evaluate and write report in under one minute
         shell: python
         run: |
-          import json, re, time
+          import json, os, re, time
           from pathlib import Path
           out_dir = Path("results/one_minute/latest")
           out_dir.mkdir(parents=True, exist_ok=True)
@@ -117,10 +117,11 @@ jobs:
           score = sum(checks.values()) / len(checks)
           report = {
               "benchmark": "CodeDriftBench-OneMinuteSmoke",
-              "model": "${{ env.MODEL }}",
-              "model_timeout_seconds": int("${{ env.MODEL_TIMEOUT }}"),
+              "model": os.environ.get("MODEL", "unknown"),
+              "model_timeout_seconds": int(os.environ.get("MODEL_TIMEOUT", "20")),
               "model_return_code": int(Path(out_dir / "model_return_code.txt").read_text().strip()),
               "model_duration_seconds": int(Path(out_dir / "model_duration_seconds.txt").read_text().strip()),
+              "post_model_design_target": "After the model command exits or times out, evaluation and commit are intentionally tiny and should complete in about one minute on a healthy runner.",
               "checks": checks,
               "score": score,
               "raw_output_tail": model_output[-2000:],
