@@ -1,0 +1,394 @@
+[
+  {
+    "model": "baseline:copy",
+    "seed": 1,
+    "task": "todo_tags",
+    "strategy": "no_anchor",
+    "horizon": 5,
+    "legacy_score": 1.0,
+    "feature_score": 0.0,
+    "hygiene_score": 1.0,
+    "spec_score": 0.6,
+    "silent_spec_failure": true,
+    "strict_feature_pass": false,
+    "legacy_regression": false,
+    "failure_count": 2,
+    "failures": [
+      {
+        "check": "tags_add",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/80c41d51-686d-45bd-b258-54ffa72b099e.py\", line 75, in evaluate\n    try: items=[]; x=mod.add_item(items,'milk',tags=['home']); ck(feature,'tags_add','home' in x.get('tags',[]),x); y=mod.add_item(items,'bread'); ck(feature,'tags_old_caller',len(items)==2 and y.get('text')=='bread',y)\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: add_item() got an unexpected keyword argument 'tags'\n"
+      },
+      {
+        "check": "tags_old_caller",
+        "detail": ""
+      }
+    ],
+    "active_requirements": [
+      "Add optional tags to add_item while preserving old callers and list_items."
+    ],
+    "code_tail": "import json, re\ndef add_item(items, text):\n    item = {\"id\": len(items) + 1, \"text\": text, \"done\": False}\n    items.append(item)\n    return item\ndef list_items(items):\n    return items\ndef redact(text, label=\"<REDACTED>\"):\n    text = re.sub(r\"(?i)(token|secret)=([A-Za-z0-9_-]{6,})\", lambda m: m.group(1)+\"=\"+label, text)\n    return re.sub(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\", \"<EMAIL>\", text)\ndef parse_config(text):\n    data = json.loads(text) if text.strip() else {}\n    out = {\"debug\": False, \"retries\": 3, \"timeout\": 30}\n    out.update(data)\n    return out\n"
+  },
+  {
+    "model": "baseline:copy",
+    "seed": 1,
+    "task": "todo_tags",
+    "strategy": "no_anchor",
+    "horizon": 10,
+    "legacy_score": 1.0,
+    "feature_score": 0.0,
+    "hygiene_score": 1.0,
+    "spec_score": 0.6,
+    "silent_spec_failure": true,
+    "strict_feature_pass": false,
+    "legacy_regression": false,
+    "failure_count": 3,
+    "failures": [
+      {
+        "check": "tags_add",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/80c41d51-686d-45bd-b258-54ffa72b099e.py\", line 75, in evaluate\n    try: items=[]; x=mod.add_item(items,'milk',tags=['home']); ck(feature,'tags_add','home' in x.get('tags',[]),x); y=mod.add_item(items,'bread'); ck(feature,'tags_old_caller',len(items)==2 and y.get('text')=='bread',y)\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: add_item() got an unexpected keyword argument 'tags'\n"
+      },
+      {
+        "check": "tags_old_caller",
+        "detail": ""
+      },
+      {
+        "check": "tag_filter",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/80c41d51-686d-45bd-b258-54ffa72b099e.py\", line 78, in evaluate\n    try: items=[{'id':1,'text':'a','done':False,'tags':['home']},{'id':2,'text':'b','done':False,'tags':['work']}]; ck(feature,'tag_filter',[i['id'] for i in mod.list_items(items,tag='home')]==[1],mod.list_items(items,tag='home'))\n                                                                                                                                           "
+      }
+    ],
+    "active_requirements": [
+      "Add optional tags to add_item while preserving old callers and list_items.",
+      "Add tag filtering to list_items(items, tag=None) while preserving list_items(items)."
+    ],
+    "code_tail": "import json, re\ndef add_item(items, text):\n    item = {\"id\": len(items) + 1, \"text\": text, \"done\": False}\n    items.append(item)\n    return item\ndef list_items(items):\n    return items\ndef redact(text, label=\"<REDACTED>\"):\n    text = re.sub(r\"(?i)(token|secret)=([A-Za-z0-9_-]{6,})\", lambda m: m.group(1)+\"=\"+label, text)\n    return re.sub(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\", \"<EMAIL>\", text)\ndef parse_config(text):\n    data = json.loads(text) if text.strip() else {}\n    out = {\"debug\": False, \"retries\": 3, \"timeout\": 30}\n    out.update(data)\n    return out\n"
+  },
+  {
+    "model": "baseline:copy",
+    "seed": 1,
+    "task": "todo_tags",
+    "strategy": "no_anchor",
+    "horizon": 20,
+    "legacy_score": 1.0,
+    "feature_score": 0.0,
+    "hygiene_score": 1.0,
+    "spec_score": 0.6,
+    "silent_spec_failure": true,
+    "strict_feature_pass": false,
+    "legacy_regression": false,
+    "failure_count": 3,
+    "failures": [
+      {
+        "check": "tags_add",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/80c41d51-686d-45bd-b258-54ffa72b099e.py\", line 75, in evaluate\n    try: items=[]; x=mod.add_item(items,'milk',tags=['home']); ck(feature,'tags_add','home' in x.get('tags',[]),x); y=mod.add_item(items,'bread'); ck(feature,'tags_old_caller',len(items)==2 and y.get('text')=='bread',y)\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: add_item() got an unexpected keyword argument 'tags'\n"
+      },
+      {
+        "check": "tags_old_caller",
+        "detail": ""
+      },
+      {
+        "check": "tag_filter",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/80c41d51-686d-45bd-b258-54ffa72b099e.py\", line 78, in evaluate\n    try: items=[{'id':1,'text':'a','done':False,'tags':['home']},{'id':2,'text':'b','done':False,'tags':['work']}]; ck(feature,'tag_filter',[i['id'] for i in mod.list_items(items,tag='home')]==[1],mod.list_items(items,tag='home'))\n                                                                                                                                           "
+      }
+    ],
+    "active_requirements": [
+      "Add optional tags to add_item while preserving old callers and list_items.",
+      "Add tag filtering to list_items(items, tag=None) while preserving list_items(items).",
+      "Ensure tags are JSON-serializable lists and default to an empty list."
+    ],
+    "code_tail": "import json, re\ndef add_item(items, text):\n    item = {\"id\": len(items) + 1, \"text\": text, \"done\": False}\n    items.append(item)\n    return item\ndef list_items(items):\n    return items\ndef redact(text, label=\"<REDACTED>\"):\n    text = re.sub(r\"(?i)(token|secret)=([A-Za-z0-9_-]{6,})\", lambda m: m.group(1)+\"=\"+label, text)\n    return re.sub(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\", \"<EMAIL>\", text)\ndef parse_config(text):\n    data = json.loads(text) if text.strip() else {}\n    out = {\"debug\": False, \"retries\": 3, \"timeout\": 30}\n    out.update(data)\n    return out\n"
+  },
+  {
+    "model": "baseline:copy",
+    "seed": 1,
+    "task": "todo_tags",
+    "strategy": "active_constraints",
+    "horizon": 5,
+    "legacy_score": 1.0,
+    "feature_score": 0.0,
+    "hygiene_score": 1.0,
+    "spec_score": 0.6,
+    "silent_spec_failure": true,
+    "strict_feature_pass": false,
+    "legacy_regression": false,
+    "failure_count": 2,
+    "failures": [
+      {
+        "check": "tags_add",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/923458a2-6454-4211-9dd6-67a2c1c6bc4c.py\", line 75, in evaluate\n    try: items=[]; x=mod.add_item(items,'milk',tags=['home']); ck(feature,'tags_add','home' in x.get('tags',[]),x); y=mod.add_item(items,'bread'); ck(feature,'tags_old_caller',len(items)==2 and y.get('text')=='bread',y)\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: add_item() got an unexpected keyword argument 'tags'\n"
+      },
+      {
+        "check": "tags_old_caller",
+        "detail": ""
+      }
+    ],
+    "active_requirements": [
+      "Add optional tags to add_item while preserving old callers and list_items."
+    ],
+    "code_tail": "import json, re\ndef add_item(items, text):\n    item = {\"id\": len(items) + 1, \"text\": text, \"done\": False}\n    items.append(item)\n    return item\ndef list_items(items):\n    return items\ndef redact(text, label=\"<REDACTED>\"):\n    text = re.sub(r\"(?i)(token|secret)=([A-Za-z0-9_-]{6,})\", lambda m: m.group(1)+\"=\"+label, text)\n    return re.sub(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\", \"<EMAIL>\", text)\ndef parse_config(text):\n    data = json.loads(text) if text.strip() else {}\n    out = {\"debug\": False, \"retries\": 3, \"timeout\": 30}\n    out.update(data)\n    return out\n"
+  },
+  {
+    "model": "baseline:copy",
+    "seed": 1,
+    "task": "todo_tags",
+    "strategy": "active_constraints",
+    "horizon": 10,
+    "legacy_score": 1.0,
+    "feature_score": 0.0,
+    "hygiene_score": 1.0,
+    "spec_score": 0.6,
+    "silent_spec_failure": true,
+    "strict_feature_pass": false,
+    "legacy_regression": false,
+    "failure_count": 3,
+    "failures": [
+      {
+        "check": "tags_add",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/923458a2-6454-4211-9dd6-67a2c1c6bc4c.py\", line 75, in evaluate\n    try: items=[]; x=mod.add_item(items,'milk',tags=['home']); ck(feature,'tags_add','home' in x.get('tags',[]),x); y=mod.add_item(items,'bread'); ck(feature,'tags_old_caller',len(items)==2 and y.get('text')=='bread',y)\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: add_item() got an unexpected keyword argument 'tags'\n"
+      },
+      {
+        "check": "tags_old_caller",
+        "detail": ""
+      },
+      {
+        "check": "tag_filter",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/923458a2-6454-4211-9dd6-67a2c1c6bc4c.py\", line 78, in evaluate\n    try: items=[{'id':1,'text':'a','done':False,'tags':['home']},{'id':2,'text':'b','done':False,'tags':['work']}]; ck(feature,'tag_filter',[i['id'] for i in mod.list_items(items,tag='home')]==[1],mod.list_items(items,tag='home'))\n                                                                                                                                           "
+      }
+    ],
+    "active_requirements": [
+      "Add optional tags to add_item while preserving old callers and list_items.",
+      "Add tag filtering to list_items(items, tag=None) while preserving list_items(items)."
+    ],
+    "code_tail": "import json, re\ndef add_item(items, text):\n    item = {\"id\": len(items) + 1, \"text\": text, \"done\": False}\n    items.append(item)\n    return item\ndef list_items(items):\n    return items\ndef redact(text, label=\"<REDACTED>\"):\n    text = re.sub(r\"(?i)(token|secret)=([A-Za-z0-9_-]{6,})\", lambda m: m.group(1)+\"=\"+label, text)\n    return re.sub(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\", \"<EMAIL>\", text)\ndef parse_config(text):\n    data = json.loads(text) if text.strip() else {}\n    out = {\"debug\": False, \"retries\": 3, \"timeout\": 30}\n    out.update(data)\n    return out\n"
+  },
+  {
+    "model": "baseline:copy",
+    "seed": 1,
+    "task": "todo_tags",
+    "strategy": "active_constraints",
+    "horizon": 20,
+    "legacy_score": 1.0,
+    "feature_score": 0.0,
+    "hygiene_score": 1.0,
+    "spec_score": 0.6,
+    "silent_spec_failure": true,
+    "strict_feature_pass": false,
+    "legacy_regression": false,
+    "failure_count": 3,
+    "failures": [
+      {
+        "check": "tags_add",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/923458a2-6454-4211-9dd6-67a2c1c6bc4c.py\", line 75, in evaluate\n    try: items=[]; x=mod.add_item(items,'milk',tags=['home']); ck(feature,'tags_add','home' in x.get('tags',[]),x); y=mod.add_item(items,'bread'); ck(feature,'tags_old_caller',len(items)==2 and y.get('text')=='bread',y)\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: add_item() got an unexpected keyword argument 'tags'\n"
+      },
+      {
+        "check": "tags_old_caller",
+        "detail": ""
+      },
+      {
+        "check": "tag_filter",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/923458a2-6454-4211-9dd6-67a2c1c6bc4c.py\", line 78, in evaluate\n    try: items=[{'id':1,'text':'a','done':False,'tags':['home']},{'id':2,'text':'b','done':False,'tags':['work']}]; ck(feature,'tag_filter',[i['id'] for i in mod.list_items(items,tag='home')]==[1],mod.list_items(items,tag='home'))\n                                                                                                                                           "
+      }
+    ],
+    "active_requirements": [
+      "Add optional tags to add_item while preserving old callers and list_items.",
+      "Add tag filtering to list_items(items, tag=None) while preserving list_items(items).",
+      "Ensure tags are JSON-serializable lists and default to an empty list."
+    ],
+    "code_tail": "import json, re\ndef add_item(items, text):\n    item = {\"id\": len(items) + 1, \"text\": text, \"done\": False}\n    items.append(item)\n    return item\ndef list_items(items):\n    return items\ndef redact(text, label=\"<REDACTED>\"):\n    text = re.sub(r\"(?i)(token|secret)=([A-Za-z0-9_-]{6,})\", lambda m: m.group(1)+\"=\"+label, text)\n    return re.sub(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\", \"<EMAIL>\", text)\ndef parse_config(text):\n    data = json.loads(text) if text.strip() else {}\n    out = {\"debug\": False, \"retries\": 3, \"timeout\": 30}\n    out.update(data)\n    return out\n"
+  },
+  {
+    "model": "baseline:copy",
+    "seed": 1,
+    "task": "todo_done_filter",
+    "strategy": "no_anchor",
+    "horizon": 5,
+    "legacy_score": 1.0,
+    "feature_score": 0.0,
+    "hygiene_score": 1.0,
+    "spec_score": 0.6,
+    "silent_spec_failure": true,
+    "strict_feature_pass": false,
+    "legacy_regression": false,
+    "failure_count": 2,
+    "failures": [
+      {
+        "check": "done_filter",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/174be71c-8626-4823-a84f-8c1c38bd7bf5.py\", line 81, in evaluate\n    try: items=[{'id':1,'text':'a','done':True},{'id':2,'text':'b','done':False}]; ck(feature,'done_filter',[i['id'] for i in mod.list_items(items,done=True)]==[1] and [i['id'] for i in mod.list_items(items,done=False)]==[2]); ck(feature,'done_default_all',mod.list_items(items)==items,mod.list_items(items))\n                                                             "
+      },
+      {
+        "check": "done_default_all",
+        "detail": ""
+      }
+    ],
+    "active_requirements": [
+      "Add list_items(items, done=True/False) filtering while preserving list_items(items)."
+    ],
+    "code_tail": "import json, re\ndef add_item(items, text):\n    item = {\"id\": len(items) + 1, \"text\": text, \"done\": False}\n    items.append(item)\n    return item\ndef list_items(items):\n    return items\ndef redact(text, label=\"<REDACTED>\"):\n    text = re.sub(r\"(?i)(token|secret)=([A-Za-z0-9_-]{6,})\", lambda m: m.group(1)+\"=\"+label, text)\n    return re.sub(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\", \"<EMAIL>\", text)\ndef parse_config(text):\n    data = json.loads(text) if text.strip() else {}\n    out = {\"debug\": False, \"retries\": 3, \"timeout\": 30}\n    out.update(data)\n    return out\n"
+  },
+  {
+    "model": "baseline:copy",
+    "seed": 1,
+    "task": "todo_done_filter",
+    "strategy": "no_anchor",
+    "horizon": 10,
+    "legacy_score": 1.0,
+    "feature_score": 0.0,
+    "hygiene_score": 1.0,
+    "spec_score": 0.6,
+    "silent_spec_failure": true,
+    "strict_feature_pass": false,
+    "legacy_regression": false,
+    "failure_count": 3,
+    "failures": [
+      {
+        "check": "done_filter",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/174be71c-8626-4823-a84f-8c1c38bd7bf5.py\", line 81, in evaluate\n    try: items=[{'id':1,'text':'a','done':True},{'id':2,'text':'b','done':False}]; ck(feature,'done_filter',[i['id'] for i in mod.list_items(items,done=True)]==[1] and [i['id'] for i in mod.list_items(items,done=False)]==[2]); ck(feature,'done_default_all',mod.list_items(items)==items,mod.list_items(items))\n                                                             "
+      },
+      {
+        "check": "done_default_all",
+        "detail": ""
+      },
+      {
+        "check": "mark_done",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/174be71c-8626-4823-a84f-8c1c38bd7bf5.py\", line 84, in evaluate\n    try: items=[{'id':1,'text':'a','done':False}]; mod.mark_done(items,1); ck(feature,'mark_done',items[0]['done'] is True,items)\n                                                   ^^^^^^^^^^^^^\nAttributeError: module 'candidate' has no attribute 'mark_done'\n"
+      }
+    ],
+    "active_requirements": [
+      "Add list_items(items, done=True/False) filtering while preserving list_items(items).",
+      "Add mark_done(items, item_id) without breaking add_item."
+    ],
+    "code_tail": "import json, re\ndef add_item(items, text):\n    item = {\"id\": len(items) + 1, \"text\": text, \"done\": False}\n    items.append(item)\n    return item\ndef list_items(items):\n    return items\ndef redact(text, label=\"<REDACTED>\"):\n    text = re.sub(r\"(?i)(token|secret)=([A-Za-z0-9_-]{6,})\", lambda m: m.group(1)+\"=\"+label, text)\n    return re.sub(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\", \"<EMAIL>\", text)\ndef parse_config(text):\n    data = json.loads(text) if text.strip() else {}\n    out = {\"debug\": False, \"retries\": 3, \"timeout\": 30}\n    out.update(data)\n    return out\n"
+  },
+  {
+    "model": "baseline:copy",
+    "seed": 1,
+    "task": "todo_done_filter",
+    "strategy": "no_anchor",
+    "horizon": 20,
+    "legacy_score": 1.0,
+    "feature_score": 0.0,
+    "hygiene_score": 1.0,
+    "spec_score": 0.6,
+    "silent_spec_failure": true,
+    "strict_feature_pass": false,
+    "legacy_regression": false,
+    "failure_count": 3,
+    "failures": [
+      {
+        "check": "done_filter",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/174be71c-8626-4823-a84f-8c1c38bd7bf5.py\", line 81, in evaluate\n    try: items=[{'id':1,'text':'a','done':True},{'id':2,'text':'b','done':False}]; ck(feature,'done_filter',[i['id'] for i in mod.list_items(items,done=True)]==[1] and [i['id'] for i in mod.list_items(items,done=False)]==[2]); ck(feature,'done_default_all',mod.list_items(items)==items,mod.list_items(items))\n                                                             "
+      },
+      {
+        "check": "done_default_all",
+        "detail": ""
+      },
+      {
+        "check": "mark_done",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/174be71c-8626-4823-a84f-8c1c38bd7bf5.py\", line 84, in evaluate\n    try: items=[{'id':1,'text':'a','done':False}]; mod.mark_done(items,1); ck(feature,'mark_done',items[0]['done'] is True,items)\n                                                   ^^^^^^^^^^^^^\nAttributeError: module 'candidate' has no attribute 'mark_done'\n"
+      }
+    ],
+    "active_requirements": [
+      "Add list_items(items, done=True/False) filtering while preserving list_items(items).",
+      "Add mark_done(items, item_id) without breaking add_item.",
+      "Keep list_items(items) returning every item by default."
+    ],
+    "code_tail": "import json, re\ndef add_item(items, text):\n    item = {\"id\": len(items) + 1, \"text\": text, \"done\": False}\n    items.append(item)\n    return item\ndef list_items(items):\n    return items\ndef redact(text, label=\"<REDACTED>\"):\n    text = re.sub(r\"(?i)(token|secret)=([A-Za-z0-9_-]{6,})\", lambda m: m.group(1)+\"=\"+label, text)\n    return re.sub(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\", \"<EMAIL>\", text)\ndef parse_config(text):\n    data = json.loads(text) if text.strip() else {}\n    out = {\"debug\": False, \"retries\": 3, \"timeout\": 30}\n    out.update(data)\n    return out\n"
+  },
+  {
+    "model": "baseline:copy",
+    "seed": 1,
+    "task": "todo_done_filter",
+    "strategy": "active_constraints",
+    "horizon": 5,
+    "legacy_score": 1.0,
+    "feature_score": 0.0,
+    "hygiene_score": 1.0,
+    "spec_score": 0.6,
+    "silent_spec_failure": true,
+    "strict_feature_pass": false,
+    "legacy_regression": false,
+    "failure_count": 2,
+    "failures": [
+      {
+        "check": "done_filter",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/0d152757-803d-434b-aee6-a995c0aeffa9.py\", line 81, in evaluate\n    try: items=[{'id':1,'text':'a','done':True},{'id':2,'text':'b','done':False}]; ck(feature,'done_filter',[i['id'] for i in mod.list_items(items,done=True)]==[1] and [i['id'] for i in mod.list_items(items,done=False)]==[2]); ck(feature,'done_default_all',mod.list_items(items)==items,mod.list_items(items))\n                                                             "
+      },
+      {
+        "check": "done_default_all",
+        "detail": ""
+      }
+    ],
+    "active_requirements": [
+      "Add list_items(items, done=True/False) filtering while preserving list_items(items)."
+    ],
+    "code_tail": "import json, re\ndef add_item(items, text):\n    item = {\"id\": len(items) + 1, \"text\": text, \"done\": False}\n    items.append(item)\n    return item\ndef list_items(items):\n    return items\ndef redact(text, label=\"<REDACTED>\"):\n    text = re.sub(r\"(?i)(token|secret)=([A-Za-z0-9_-]{6,})\", lambda m: m.group(1)+\"=\"+label, text)\n    return re.sub(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\", \"<EMAIL>\", text)\ndef parse_config(text):\n    data = json.loads(text) if text.strip() else {}\n    out = {\"debug\": False, \"retries\": 3, \"timeout\": 30}\n    out.update(data)\n    return out\n"
+  },
+  {
+    "model": "baseline:copy",
+    "seed": 1,
+    "task": "todo_done_filter",
+    "strategy": "active_constraints",
+    "horizon": 10,
+    "legacy_score": 1.0,
+    "feature_score": 0.0,
+    "hygiene_score": 1.0,
+    "spec_score": 0.6,
+    "silent_spec_failure": true,
+    "strict_feature_pass": false,
+    "legacy_regression": false,
+    "failure_count": 3,
+    "failures": [
+      {
+        "check": "done_filter",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/0d152757-803d-434b-aee6-a995c0aeffa9.py\", line 81, in evaluate\n    try: items=[{'id':1,'text':'a','done':True},{'id':2,'text':'b','done':False}]; ck(feature,'done_filter',[i['id'] for i in mod.list_items(items,done=True)]==[1] and [i['id'] for i in mod.list_items(items,done=False)]==[2]); ck(feature,'done_default_all',mod.list_items(items)==items,mod.list_items(items))\n                                                             "
+      },
+      {
+        "check": "done_default_all",
+        "detail": ""
+      },
+      {
+        "check": "mark_done",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/0d152757-803d-434b-aee6-a995c0aeffa9.py\", line 84, in evaluate\n    try: items=[{'id':1,'text':'a','done':False}]; mod.mark_done(items,1); ck(feature,'mark_done',items[0]['done'] is True,items)\n                                                   ^^^^^^^^^^^^^\nAttributeError: module 'candidate' has no attribute 'mark_done'\n"
+      }
+    ],
+    "active_requirements": [
+      "Add list_items(items, done=True/False) filtering while preserving list_items(items).",
+      "Add mark_done(items, item_id) without breaking add_item."
+    ],
+    "code_tail": "import json, re\ndef add_item(items, text):\n    item = {\"id\": len(items) + 1, \"text\": text, \"done\": False}\n    items.append(item)\n    return item\ndef list_items(items):\n    return items\ndef redact(text, label=\"<REDACTED>\"):\n    text = re.sub(r\"(?i)(token|secret)=([A-Za-z0-9_-]{6,})\", lambda m: m.group(1)+\"=\"+label, text)\n    return re.sub(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\", \"<EMAIL>\", text)\ndef parse_config(text):\n    data = json.loads(text) if text.strip() else {}\n    out = {\"debug\": False, \"retries\": 3, \"timeout\": 30}\n    out.update(data)\n    return out\n"
+  },
+  {
+    "model": "baseline:copy",
+    "seed": 1,
+    "task": "todo_done_filter",
+    "strategy": "active_constraints",
+    "horizon": 20,
+    "legacy_score": 1.0,
+    "feature_score": 0.0,
+    "hygiene_score": 1.0,
+    "spec_score": 0.6,
+    "silent_spec_failure": true,
+    "strict_feature_pass": false,
+    "legacy_regression": false,
+    "failure_count": 3,
+    "failures": [
+      {
+        "check": "done_filter",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/0d152757-803d-434b-aee6-a995c0aeffa9.py\", line 81, in evaluate\n    try: items=[{'id':1,'text':'a','done':True},{'id':2,'text':'b','done':False}]; ck(feature,'done_filter',[i['id'] for i in mod.list_items(items,done=True)]==[1] and [i['id'] for i in mod.list_items(items,done=False)]==[2]); ck(feature,'done_default_all',mod.list_items(items)==items,mod.list_items(items))\n                                                             "
+      },
+      {
+        "check": "done_default_all",
+        "detail": ""
+      },
+      {
+        "check": "mark_done",
+        "detail": "Traceback (most recent call last):\n  File \"/home/runner/work/_temp/0d152757-803d-434b-aee6-a995c0aeffa9.py\", line 84, in evaluate\n    try: items=[{'id':1,'text':'a','done':False}]; mod.mark_done(items,1); ck(feature,'mark_done',items[0]['done'] is True,items)\n                                                   ^^^^^^^^^^^^^\nAttributeError: module 'candidate' has no attribute 'mark_done'\n"
+      }
+    ],
+    "active_requirements": [
+      "Add list_items(items, done=True/False) filtering while preserving list_items(items).",
+      "Add mark_done(items, item_id) without breaking add_item.",
+      "Keep list_items(items) returning every item by default."
+    ],
+    "code_tail": "import json, re\ndef add_item(items, text):\n    item = {\"id\": len(items) + 1, \"text\": text, \"done\": False}\n    items.append(item)\n    return item\ndef list_items(items):\n    return items\ndef redact(text, label=\"<REDACTED>\"):\n    text = re.sub(r\"(?i)(token|secret)=([A-Za-z0-9_-]{6,})\", lambda m: m.group(1)+\"=\"+label, text)\n    return re.sub(r\"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\", \"<EMAIL>\", text)\ndef parse_config(text):\n    data = json.loads(text) if text.strip() else {}\n    out = {\"debug\": False, \"retries\": 3, \"timeout\": 30}\n    out.update(data)\n    return out\n"
+  }
+]
