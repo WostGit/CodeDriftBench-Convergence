@@ -1,0 +1,136 @@
+{
+  "benchmark": "CodeDriftBench-PublishableEvidence",
+  "profile": "core",
+  "run_id": "27485905583",
+  "expected_slices": 72,
+  "observed_slices": 72,
+  "expected_observations": 216,
+  "observed_observations": 216,
+  "mean_legacy_score": 0.984375,
+  "mean_feature_score": 0.36419753086419754,
+  "mean_spec_score": 0.7353491512345679,
+  "mean_silent_spec_failure_rate": 0.4861111111111111,
+  "baseline_feature_mean": 0.125,
+  "nonbaseline_feature_mean": 0.4837962962962963,
+  "feature_delta_over_baseline": 0.3587962962962963,
+  "spec_ci95": [
+    0.7140817901234567,
+    0.7569540895061728
+  ],
+  "feature_ci95": [
+    0.30941358024691357,
+    0.42052469135802467
+  ],
+  "model_spec_summary": {
+    "baseline:copy": {
+      "n": 72,
+      "mean": 0.65,
+      "ci95": [
+        0.6305555555555555,
+        0.6722222222222223
+      ]
+    },
+    "qwen2.5-coder:1.5b": {
+      "n": 72,
+      "mean": 0.68125,
+      "ci95": [
+        0.6585648148148148,
+        0.7041666666666667
+      ]
+    },
+    "qwen2.5-coder:3b": {
+      "n": 72,
+      "mean": 0.8747974537037037,
+      "ci95": [
+        0.8342881944444445,
+        0.9140046296296296
+      ]
+    }
+  },
+  "model_feature_summary": {
+    "baseline:copy": {
+      "n": 72,
+      "mean": 0.125,
+      "ci95": [
+        0.0763888888888889,
+        0.18055555555555555
+      ]
+    },
+    "qwen2.5-coder:1.5b": {
+      "n": 72,
+      "mean": 0.20833333333333334,
+      "ci95": [
+        0.14814814814814814,
+        0.2708333333333333
+      ]
+    },
+    "qwen2.5-coder:3b": {
+      "n": 72,
+      "mean": 0.7592592592592593,
+      "ci95": [
+        0.6620370370370371,
+        0.8518518518518519
+      ]
+    }
+  },
+  "strategy_spec_summary": {
+    "active_constraints": {
+      "n": 108,
+      "mean": 0.700270061728395,
+      "ci95": [
+        0.6721643518518519,
+        0.7280864197530864
+      ]
+    },
+    "no_anchor": {
+      "n": 108,
+      "mean": 0.7704282407407407,
+      "ci95": [
+        0.7368827160493827,
+        0.8027777777777778
+      ]
+    }
+  },
+  "horizon_spec_summary": {
+    "10": {
+      "n": 72,
+      "mean": 0.7366608796296297,
+      "ci95": [
+        0.7023148148148148,
+        0.7731481481481481
+      ]
+    },
+    "20": {
+      "n": 72,
+      "mean": 0.7456886574074074,
+      "ci95": [
+        0.7089699074074074,
+        0.7821759259259259
+      ]
+    },
+    "5": {
+      "n": 72,
+      "mean": 0.7236979166666666,
+      "ci95": [
+        0.6868055555555556,
+        0.7598958333333333
+      ]
+    }
+  },
+  "gates": {
+    "complete_run": true,
+    "has_baseline": true,
+    "enough_nonbaseline_models": true,
+    "enough_tasks": true,
+    "enough_seeds": true,
+    "enough_horizons": true,
+    "strategy_ablation": true,
+    "executable_scoring": true,
+    "reports_uncertainty": true,
+    "feature_signal_over_baseline": true,
+    "enough_observations": true,
+    "separate_metrics_reported": true
+  },
+  "publishable_evidence": true,
+  "claim_card": "Publishable evidence package"
+}
