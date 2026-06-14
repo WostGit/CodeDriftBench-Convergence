@@ -3,14 +3,10 @@ name: CodeDriftBench Two-Minute Parallel Smoke
 on:
   workflow_dispatch:
     inputs:
-      model:
-        description: "Ollama model tag for each shard"
-        required: false
-        default: "qwen2.5-coder:0.5b"
       model_timeout_seconds:
         description: "Hard timeout per shard model call"
         required: false
-        default: "25"
+        default: "45"
   push:
     branches: [main]
     paths:
@@ -21,8 +17,7 @@ permissions:
   actions: read
 
 env:
-  MODEL_DEFAULT: qwen2.5-coder:0.5b
-  MODEL_TIMEOUT_DEFAULT: "25"
+  MODEL_TIMEOUT_DEFAULT: "45"
 
 concurrency:
   group: codedriftbench-two-minute-parallel-${{ github.ref }}
@@ -30,27 +25,59 @@ concurrency:
 
 jobs:
   shard:
-    name: ${{ matrix.case_id }}
+    name: ${{ matrix.case_id }} ${{ matrix.model }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 8
       matrix:
         include:
-          - case_id: todo_tags
+          - case_id: todo_tags_1p5b
+            base_case: todo_tags
+            model: qwen2.5-coder:1.5b
             module_name: todo.py
             request: "Add optional tags to add_item while preserving old callers and list_items."
             must_have: "def add_item|def list_items|tags|json"
-          - case_id: todo_done_filter
+          - case_id: todo_done_filter_1p5b
+            base_case: todo_done_filter
+            model: qwen2.5-coder:1.5b
             module_name: todo.py
             request: "Add list_items(done=True/False) filtering while preserving stable JSON storage."
             must_have: "def add_item|def list_items|done|json"
-          - case_id: redactor_aws
+          - case_id: redactor_aws_1p5b
+            base_case: redactor_aws
+            model: qwen2.5-coder:1.5b
             module_name: redactor.py
             request: "Also redact AWS access-key-like strings beginning with AKIA, without leaking secrets."
             must_have: "def redact|AKIA|re|REDACT"
-          - case_id: config_timeout
+          - case_id: config_timeout_1p5b
+            base_case: config_timeout
+            model: qwen2.5-coder:1.5b
+            module_name: config_parser.py
+            request: "Validate that timeout must be positive while preserving parse_config(text)."
+            must_have: "def parse_config|timeout|ValueError|json"
+          - case_id: todo_tags_3b
+            base_case: todo_tags
+            model: qwen2.5-coder:3b
+            module_name: todo.py
+            request: "Add optional tags to add_item while preserving old callers and list_items."
+            must_have: "def add_item|def list_items|tags|json"
+          - case_id: todo_done_filter_3b
+            base_case: todo_done_filter
+            model: qwen2.5-coder:3b
+            module_name: todo.py
+            request: "Add list_items(done=True/False) filtering while preserving stable JSON storage."
+            must_have: "def add_item|def list_items|done|json"
+          - case_id: redactor_aws_3b
+            base_case: redactor_aws
+            model: qwen2.5-coder:3b
+            module_name: redactor.py
+            request: "Also redact AWS access-key-like strings beginning with AKIA, without leaking secrets."
+            must_have: "def redact|AKIA|re|REDACT"
+          - case_id: config_timeout_3b
+            base_case: config_timeout
+            model: qwen2.5-coder:3b
             module_name: config_parser.py
             request: "Validate that timeout must be positive while preserving parse_config(text)."
             must_have: "def parse_config|timeout|ValueError|json"
@@ -61,7 +88,7 @@ jobs:
       - name: Set runtime inputs
         shell: bash
         run: |
-          echo "MODEL=${{ github.event.inputs.model || env.MODEL_DEFAULT }}" >> "$GITHUB_ENV"
+          echo "MODEL=${{ matrix.model }}" >> "$GITHUB_ENV"
           echo "MODEL_TIMEOUT=${{ github.event.inputs.model_timeout_seconds || env.MODEL_TIMEOUT_DEFAULT }}" >> "$GITHUB_ENV"
 
       - name: Install Ollama
@@ -115,6 +142,7 @@ jobs:
           RC=$?
           END=$(date +%s)
           printf '%s\n' "${{ matrix.case_id }}" > shard_result/case_id.txt
+          printf '%s\n' "${{ matrix.base_case }}" > shard_result/base_case.txt
           printf '%s\n' "$MODEL" > shard_result/model.txt
           printf '%s\n' "$RC" > shard_result/return_code.txt
           printf '%s\n' "$((END-START))" > shard_result/duration_seconds.txt
@@ -137,6 +165,7 @@ jobs:
           score = sum(checks.values()) / len(checks) if checks else 0.0
           result = {
             'case_id': (root / 'case_id.txt').read_text().strip(),
+            'base_case': (root / 'base_case.txt').read_text().strip(),
             'model': (root / 'model.txt').read_text().strip(),
             'return_code': int((root / 'return_code.txt').read_text().strip()),
             'duration_seconds': int((root / 'duration_seconds.txt').read_text().strip()),
@@ -156,7 +185,7 @@ jobs:
           if-no-files-found: error
 
   aggregate:
-    name: Aggregate and commit two-minute report
+    name: Aggregate and commit eight-shard report
     needs: shard
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -177,9 +206,10 @@ jobs:
         shell: python
         run: |
           import json, os, statistics, time
+          from collections import defaultdict
           from pathlib import Path
           run_id = os.environ.get('GITHUB_RUN_ID', 'local')
-          base = Path('results/two_minute')
+          base = Path('results/eight_shard')
           latest = base / 'latest'
           run_dir = base / 'runs' / run_id
           for d in (latest, run_dir):
@@ -187,13 +217,18 @@ jobs:
           rows = []
           for p in sorted(Path('shard_results').rglob('result.json')):
               rows.append(json.loads(p.read_text()))
-          expected = 4
+          expected_cases = ['todo_tags_1p5b','todo_done_filter_1p5b','redactor_aws_1p5b','config_timeout_1p5b','todo_tags_3b','todo_done_filter_3b','redactor_aws_3b','config_timeout_3b']
+          expected = len(expected_cases)
           observed = len(rows)
-          missing = sorted(set(['todo_tags','todo_done_filter','redactor_aws','config_timeout']) - {r.get('case_id') for r in rows})
+          missing = sorted(set(expected_cases) - {r.get('case_id') for r in rows})
           mean_score = statistics.mean([r['score'] for r in rows]) if rows else 0.0
           mean_duration = statistics.mean([r['duration_seconds'] for r in rows]) if rows else 0.0
+          by_model = defaultdict(list)
+          for r in rows:
+              by_model[r['model']].append(r['score'])
+          model_summary = {m: {'n': len(v), 'mean_score': statistics.mean(v)} for m, v in sorted(by_model.items())}
           report = {
-            'benchmark': 'CodeDriftBench-TwoMinuteParallelSmoke',
+            'benchmark': 'CodeDriftBench-EightShardBiggerModelSmoke',
             'run_id': run_id,
             'expected_shards': expected,
             'observed_shards': observed,
@@ -202,13 +237,14 @@ jobs:
             'mean_score': mean_score,
             'mean_model_duration_seconds': mean_duration,
             'max_model_duration_seconds': max([r['duration_seconds'] for r in rows], default=0),
+            'model_summary': model_summary,
             'generated_at_epoch': int(time.time()),
             'rows': rows,
-            'claim': 'Fast parallel execution/commit probe only; not publishable benchmark evidence.',
-            'note': 'Artifact aggregation fixed: artifacts stay in per-shard folders and are read recursively.'
+            'claim': 'Fast parallel bigger-model smoke probe only; not publishable benchmark evidence.',
+            'note': 'Eight shards: four tasks on qwen2.5-coder:1.5b and four tasks on qwen2.5-coder:3b.'
           }
           lines = [
-            '# CodeDriftBench Two-Minute Parallel Smoke Report',
+            '# CodeDriftBench Eight-Shard Bigger-Model Smoke Report',
             '',
             f"Run ID: `{run_id}`",
             f"Complete: **{report['complete']}** ({observed}/{expected} shards)",
@@ -217,11 +253,15 @@ jobs:
             f"Mean model duration: **{mean_duration:.1f}s**",
             f"Max model duration: **{report['max_model_duration_seconds']}s**",
             '',
-            '| Case | Model | Duration | Return | Score |',
-            '|---|---|---:|---:|---:|',
+            '## Model summary',
+            '| Model | Shards | Mean score |',
+            '|---|---:|---:|',
           ]
+          for m, s in model_summary.items():
+              lines.append(f"| {m} | {s['n']} | {s['mean_score']:.3f} |")
+          lines += ['', '## Shards', '| Case | Base case | Model | Duration | Return | Score |', '|---|---|---|---:|---:|---:|']
           for r in rows:
-              lines.append(f"| {r['case_id']} | {r['model']} | {r['duration_seconds']}s | {r['return_code']} | {r['score']:.3f} |")
+              lines.append(f"| {r['case_id']} | {r.get('base_case','')} | {r['model']} | {r['duration_seconds']}s | {r['return_code']} | {r['score']:.3f} |")
           lines += ['', '## Claim', report['claim']]
           for d in (latest, run_dir):
               (d / 'report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
@@ -234,18 +274,18 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp -R results/two_minute /tmp/two_minute_results
+          cp -R results/eight_shard /tmp/eight_shard_results
           git reset --hard HEAD
           git pull --rebase origin main
-          rm -rf results/two_minute/latest
-          mkdir -p results/two_minute
-          cp -R /tmp/two_minute_results/latest results/two_minute/latest
-          mkdir -p results/two_minute/runs
-          cp -R /tmp/two_minute_results/runs/$GITHUB_RUN_ID results/two_minute/runs/$GITHUB_RUN_ID
-          git add results/two_minute/latest results/two_minute/runs/$GITHUB_RUN_ID
+          rm -rf results/eight_shard/latest
+          mkdir -p results/eight_shard
+          cp -R /tmp/eight_shard_results/latest results/eight_shard/latest
+          mkdir -p results/eight_shard/runs
+          cp -R /tmp/eight_shard_results/runs/$GITHUB_RUN_ID results/eight_shard/runs/$GITHUB_RUN_ID
+          git add results/eight_shard/latest results/eight_shard/runs/$GITHUB_RUN_ID
           if git diff --cached --quiet; then
-            echo "No two-minute report changes to commit."
+            echo "No eight-shard report changes to commit."
           else
-            git commit -m "Add two-minute parallel CodeDriftBench smoke report $GITHUB_RUN_ID [skip ci]"
+            git commit -m "Add eight-shard bigger-model CodeDriftBench smoke report $GITHUB_RUN_ID [skip ci]"
             git push
           fi
