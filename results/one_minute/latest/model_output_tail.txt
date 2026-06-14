@@ -1,0 +1,34 @@
+```python
+import json
+
+# Define a function that can be called with either an 'items' or 'tags'
+def add_item_or_tag(items, tag=None):
+    if tag:
+        item = {"id": len(items) + 1, "text": f"{tag}:{text}", "done": Fals[4D[K
+False}
+    else:
+        item = {"id": len(items) + 1, "text": text, "done": False}
+    
+    items.append(item)
+    return item
+
+# Example usage
+items = [
+    {"id": 1, "text": "Write report", "done": False},
+    {"id": 2, "text": "Design website", "done": True},
+    {"id": 3, "text": "Test application", "done": True}
+]
+
+print(add_item_or_tag(items))  # Output: {"id": 4, "text": "Write report:te[9D[K
+report:test application", "done": False}
+
+items = [
+    {"id": 1, "text": "Write report", "done": False},
+    {"id": 2, "text": "Design website", "done": True},
+    {"id": 3, "text": "Test application", "done": True}
+]
+
+print(add_item_or_tag(items, "todo"))  # Output: {"id": 4, "text": "Write r[1D[K
+report:test application:todo", "done": False}
+```
+
