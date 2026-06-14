@@ -30,7 +30,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 concurrency:
-  group: codedriftbench-publishable-${{ github.ref }}-${{ github.event.inputs.evidence_profile || 'push' }}
+  group: codedriftbench-publishable-${{ github.ref }}-${{ github.event.inputs.evidence_profile || 'core' }}
   cancel-in-progress: false
 
 jobs:
@@ -46,7 +46,7 @@ jobs:
         shell: python
         run: |
           import itertools, json, os, re
-          profile = "${{ github.event.inputs.evidence_profile || 'smoke' }}"
+          profile = "${{ github.event.inputs.evidence_profile || 'core' }}"
           if profile == 'smoke':
               models=['baseline:copy','qwen2.5-coder:1.5b']; seeds=[1]; tasks=['todo_tags','todo_done_filter']; strategies=['no_anchor']; horizons=[1,3,5]
           elif profile == 'core':
