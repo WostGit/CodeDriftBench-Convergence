@@ -1,4 +1,4 @@
-name: CodeDriftBench Two-Minute Parallel Smoke
+name: CodeDriftBench Eight-Shard Executable Smoke
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
       model_timeout_seconds:
         description: "Hard timeout per shard model call"
         required: false
-        default: "45"
+        default: "60"
   push:
     branches: [main]
     paths:
@@ -17,10 +17,11 @@ permissions:
   actions: read
 
 env:
-  MODEL_TIMEOUT_DEFAULT: "45"
+  MODEL_TIMEOUT_DEFAULT: "60"
+  OLLAMA_HOST: http://127.0.0.1:11434
 
 concurrency:
-  group: codedriftbench-two-minute-parallel-${{ github.ref }}
+  group: codedriftbench-eight-shard-executable-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -38,49 +39,41 @@ jobs:
             model: qwen2.5-coder:1.5b
             module_name: todo.py
             request: "Add optional tags to add_item while preserving old callers and list_items."
-            must_have: "def add_item|def list_items|tags|json"
           - case_id: todo_done_filter_1p5b
             base_case: todo_done_filter
             model: qwen2.5-coder:1.5b
             module_name: todo.py
             request: "Add list_items(done=True/False) filtering while preserving stable JSON storage."
-            must_have: "def add_item|def list_items|done|json"
           - case_id: redactor_aws_1p5b
             base_case: redactor_aws
             model: qwen2.5-coder:1.5b
             module_name: redactor.py
             request: "Also redact AWS access-key-like strings beginning with AKIA, without leaking secrets."
-            must_have: "def redact|AKIA|re|REDACT"
           - case_id: config_timeout_1p5b
             base_case: config_timeout
             model: qwen2.5-coder:1.5b
             module_name: config_parser.py
             request: "Validate that timeout must be positive while preserving parse_config(text)."
-            must_have: "def parse_config|timeout|ValueError|json"
           - case_id: todo_tags_3b
             base_case: todo_tags
             model: qwen2.5-coder:3b
             module_name: todo.py
             request: "Add optional tags to add_item while preserving old callers and list_items."
-            must_have: "def add_item|def list_items|tags|json"
           - case_id: todo_done_filter_3b
             base_case: todo_done_filter
             model: qwen2.5-coder:3b
             module_name: todo.py
             request: "Add list_items(done=True/False) filtering while preserving stable JSON storage."
-            must_have: "def add_item|def list_items|done|json"
           - case_id: redactor_aws_3b
             base_case: redactor_aws
             model: qwen2.5-coder:3b
             module_name: redactor.py
             request: "Also redact AWS access-key-like strings beginning with AKIA, without leaking secrets."
-            must_have: "def redact|AKIA|re|REDACT"
           - case_id: config_timeout_3b
             base_case: config_timeout
             model: qwen2.5-coder:3b
             module_name: config_parser.py
             request: "Validate that timeout must be positive while preserving parse_config(text)."
-            must_have: "def parse_config|timeout|ValueError|json"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -98,8 +91,13 @@ jobs:
           curl -fsSL https://ollama.com/install.sh | sh
           ollama serve > ollama.log 2>&1 &
           echo $! > ollama.pid
-          sleep 5
-          ollama --version || true
+          for i in $(seq 1 20); do
+            if curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then exit 0; fi
+            sleep 1
+          done
+          echo "Ollama did not become ready" >&2
+          cat ollama.log || true
+          exit 1
 
       - name: Pull model
         shell: bash
@@ -108,17 +106,28 @@ jobs:
           ollama pull "$MODEL"
           ollama list > ollama_list.txt || true
 
-      - name: Run one bounded model call
-        shell: bash
+      - name: Run and evaluate shard with executable checks
+        shell: python
+        env:
+          CASE_ID: ${{ matrix.case_id }}
+          BASE_CASE: ${{ matrix.base_case }}
+          MODULE_NAME: ${{ matrix.module_name }}
+          REQUEST_TEXT: ${{ matrix.request }}
         run: |
-          set +e
-          mkdir -p shard_result
-          cat > prompt.txt <<PROMPT
-          You are editing ${{ matrix.module_name }} for CodeDriftBench.
-          Return ONLY one Python code block containing the complete replacement file.
-          Preserve durable constraints: stable public API, Python standard library only, no network calls, no secret leakage, and existing behavior unless the request explicitly changes it.
-          Current file:
-          \`\`\`python
+          import ast, importlib.util, inspect, json, os, re, subprocess, sys, tempfile, textwrap, time, traceback, urllib.request
+          from pathlib import Path
+
+          CASE_ID = os.environ['CASE_ID']
+          BASE_CASE = os.environ['BASE_CASE']
+          MODULE_NAME = os.environ['MODULE_NAME']
+          REQUEST_TEXT = os.environ['REQUEST_TEXT']
+          MODEL = os.environ['MODEL']
+          MODEL_TIMEOUT = int(os.environ.get('MODEL_TIMEOUT', '60'))
+          OLLAMA_HOST = os.environ.get('OLLAMA_HOST', 'http://127.0.0.1:11434')
+          root = Path('shard_result')
+          root.mkdir(exist_ok=True)
+
+          BASE_CODE = '''
           import json, re
           def add_item(items, text):
               item = {"id": len(items) + 1, "text": text, "done": False}
@@ -134,45 +143,193 @@ jobs:
               out = {"debug": False, "retries": 3, "timeout": 30}
               out.update(data)
               return out
-          \`\`\`
-          Request: ${{ matrix.request }}
-          PROMPT
-          START=$(date +%s)
-          timeout "${MODEL_TIMEOUT}s" ollama run "$MODEL" < prompt.txt > shard_result/model_output.txt 2> shard_result/model_error.txt
-          RC=$?
-          END=$(date +%s)
-          printf '%s\n' "${{ matrix.case_id }}" > shard_result/case_id.txt
-          printf '%s\n' "${{ matrix.base_case }}" > shard_result/base_case.txt
-          printf '%s\n' "$MODEL" > shard_result/model.txt
-          printf '%s\n' "$RC" > shard_result/return_code.txt
-          printf '%s\n' "$((END-START))" > shard_result/duration_seconds.txt
-          printf '%s\n' "${{ matrix.must_have }}" > shard_result/must_have.txt
-          exit 0
+          '''
+          BASE_CODE = textwrap.dedent(BASE_CODE).strip() + '\n'
 
-      - name: Evaluate shard
-        shell: python
-        run: |
-          import json, re
-          from pathlib import Path
-          root = Path('shard_result')
-          text = (root / 'model_output.txt').read_text(errors='ignore')
-          blocks = re.findall(r"```(?:python)?\s*(.*?)```", text, flags=re.S | re.I)
-          code = blocks[-1] if blocks else text
-          must = (root / 'must_have.txt').read_text().strip().split('|')
-          checks = {f'contains_{m}': (m in code) for m in must if m}
-          checks['returned_code'] = bool(code.strip())
-          checks['no_external_dependency_hint'] = 'import requests' not in code and 'pip ' not in code.lower()
+          prompt = f'''
+          You are editing {MODULE_NAME} for CodeDriftBench.
+          Return ONLY one Python code block containing the complete replacement file.
+          Preserve every existing public API unless the request explicitly changes it.
+          Durable constraints:
+          - Python standard library only.
+          - No network calls.
+          - No secret leakage.
+          - Existing functions add_item, list_items, redact, and parse_config must keep working unless unrelated to the requested feature.
+          - Preserve old callers while adding the requested behavior.
+
+          Current file:
+          ```python
+          {BASE_CODE}
+          ```
+
+          Request: {REQUEST_TEXT}
+          '''.strip()
+
+          def http_generate():
+              payload = {
+                  'model': MODEL,
+                  'prompt': prompt,
+                  'stream': False,
+                  'options': {'temperature': 0, 'top_p': 1, 'seed': 0, 'num_ctx': 4096},
+              }
+              data = json.dumps(payload).encode('utf-8')
+              req = urllib.request.Request(f'{OLLAMA_HOST}/api/generate', data=data, headers={'Content-Type': 'application/json'})
+              with urllib.request.urlopen(req, timeout=MODEL_TIMEOUT) as resp:
+                  body = json.loads(resp.read().decode('utf-8'))
+              return body.get('response', '')
+
+          start = time.time()
+          return_code = 0
+          error_tail = ''
+          try:
+              raw_output = http_generate()
+          except Exception:
+              return_code = 1
+              raw_output = ''
+              error_tail = traceback.format_exc()
+          duration = int(time.time() - start)
+
+          def strip_control(s: str) -> str:
+              s = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', s)
+              return ''.join(ch for ch in s if ch in '\n\r\t' or ord(ch) >= 32)
+
+          def extract_python(s: str) -> str:
+              s = strip_control(s)
+              blocks = re.findall(r'```(?:python)?\s*(.*?)```', s, flags=re.S | re.I)
+              return (blocks[-1] if blocks else s).strip() + '\n'
+
+          code = extract_python(raw_output)
+          checks = {}
+          failures = []
+
+          def add_check(name, ok, detail=''):
+              checks[name] = bool(ok)
+              if not ok:
+                  failures.append({'check': name, 'detail': detail})
+
+          add_check('returned_code', bool(code.strip()), 'no code returned')
+          add_check('no_control_chars', code == strip_control(code), 'control characters survived sanitization')
+          try:
+              ast.parse(code)
+              add_check('ast_parse', True)
+          except Exception as e:
+              add_check('ast_parse', False, repr(e))
+
+          tree = None
+          try:
+              tree = ast.parse(code)
+          except Exception:
+              tree = None
+          banned_imports = {'requests', 'urllib', 'httpx', 'aiohttp', 'socket', 'subprocess'}
+          imports = set()
+          if tree:
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      for a in node.names:
+                          imports.add(a.name.split('.')[0])
+                  elif isinstance(node, ast.ImportFrom) and node.module:
+                      imports.add(node.module.split('.')[0])
+          add_check('stdlib_only_no_network_imports', not (imports & banned_imports), f'banned imports: {imports & banned_imports}')
+
+          with tempfile.TemporaryDirectory() as d:
+              mod_path = Path(d) / 'candidate.py'
+              mod_path.write_text(code, encoding='utf-8')
+              spec = importlib.util.spec_from_file_location('candidate', mod_path)
+              mod = importlib.util.module_from_spec(spec)
+              try:
+                  spec.loader.exec_module(mod)  # type: ignore[union-attr]
+                  add_check('module_imports', True)
+              except Exception:
+                  add_check('module_imports', False, traceback.format_exc())
+                  mod = None
+
+              def has_fn(name):
+                  return mod is not None and callable(getattr(mod, name, None))
+              for fn in ['add_item', 'list_items', 'redact', 'parse_config']:
+                  add_check(f'api_{fn}_exists', has_fn(fn), f'{fn} missing')
+
+              if mod is not None:
+                  try:
+                      items = []
+                      item = mod.add_item(items, 'milk')
+                      add_check('legacy_add_item_mutates_items', len(items) == 1 and item is items[0] and item.get('id') == 1, repr(items))
+                  except Exception:
+                      add_check('legacy_add_item_mutates_items', False, traceback.format_exc())
+                  try:
+                      items = [{'id': 1, 'text': 'x', 'done': False}]
+                      listed = mod.list_items(items)
+                      add_check('legacy_list_items_items_arg', listed == items, repr(listed))
+                  except Exception:
+                      add_check('legacy_list_items_items_arg', False, traceback.format_exc())
+                  try:
+                      red = mod.redact('email a@test.com token=abcdefg secret=hijklmn AKIAABCDEFGHIJKLMNOP')
+                      add_check('legacy_redact_email', '<EMAIL>' in red and 'a@test.com' not in red, red)
+                      add_check('legacy_redact_token_secret', 'abcdefg' not in red and 'hijklmn' not in red, red)
+                  except Exception:
+                      add_check('legacy_redact_email', False, traceback.format_exc())
+                      add_check('legacy_redact_token_secret', False, traceback.format_exc())
+                  try:
+                      cfg = mod.parse_config('{"debug": true, "retries": 5}')
+                      add_check('legacy_parse_config_defaults', cfg.get('timeout') == 30 and cfg.get('retries') == 5 and cfg.get('debug') is True, repr(cfg))
+                  except Exception:
+                      add_check('legacy_parse_config_defaults', False, traceback.format_exc())
+
+                  if BASE_CASE == 'todo_tags':
+                      try:
+                          items = []
+                          item = mod.add_item(items, 'milk', tags=['home'])
+                          add_check('feature_tags_supported', 'home' in item.get('tags', []) and items[0] is item, repr(item))
+                          item2 = mod.add_item(items, 'bread')
+                          add_check('feature_tags_old_caller_still_works', 'tags' in item2 or len(items) == 2, repr(item2))
+                      except Exception:
+                          add_check('feature_tags_supported', False, traceback.format_exc())
+                          add_check('feature_tags_old_caller_still_works', False, traceback.format_exc())
+                  elif BASE_CASE == 'todo_done_filter':
+                      try:
+                          items = [{'id': 1, 'text': 'a', 'done': True}, {'id': 2, 'text': 'b', 'done': False}]
+                          done = mod.list_items(items, done=True)
+                          undone = mod.list_items(items, done=False)
+                          all_items = mod.list_items(items)
+                          add_check('feature_done_filter_supported', len(done) == 1 and done[0]['id'] == 1 and len(undone) == 1 and undone[0]['id'] == 2, repr((done, undone)))
+                          add_check('feature_done_filter_preserves_default', all_items == items, repr(all_items))
+                      except Exception:
+                          add_check('feature_done_filter_supported', False, traceback.format_exc())
+                          add_check('feature_done_filter_preserves_default', False, traceback.format_exc())
+                  elif BASE_CASE == 'redactor_aws':
+                      try:
+                          red = mod.redact('key=AKIAABCDEFGHIJKLMNOP token=abcdefg')
+                          add_check('feature_redacts_aws_key', 'AKIAABCDEFGHIJKLMNOP' not in red, red)
+                          add_check('feature_redact_preserves_label_behavior', 'abcdefg' not in red, red)
+                      except Exception:
+                          add_check('feature_redacts_aws_key', False, traceback.format_exc())
+                          add_check('feature_redact_preserves_label_behavior', False, traceback.format_exc())
+                  elif BASE_CASE == 'config_timeout':
+                      try:
+                          ok = mod.parse_config('{"timeout": 10}')
+                          add_check('feature_timeout_positive_allowed', ok.get('timeout') == 10, repr(ok))
+                      except Exception:
+                          add_check('feature_timeout_positive_allowed', False, traceback.format_exc())
+                      try:
+                          mod.parse_config('{"timeout": 0}')
+                          add_check('feature_timeout_zero_rejected', False, 'accepted timeout=0')
+                      except ValueError:
+                          add_check('feature_timeout_zero_rejected', True)
+                      except Exception:
+                          add_check('feature_timeout_zero_rejected', False, traceback.format_exc())
+
           score = sum(checks.values()) / len(checks) if checks else 0.0
           result = {
-            'case_id': (root / 'case_id.txt').read_text().strip(),
-            'base_case': (root / 'base_case.txt').read_text().strip(),
-            'model': (root / 'model.txt').read_text().strip(),
-            'return_code': int((root / 'return_code.txt').read_text().strip()),
-            'duration_seconds': int((root / 'duration_seconds.txt').read_text().strip()),
-            'score': score,
-            'checks': checks,
-            'output_tail': text[-2000:],
-            'error_tail': (root / 'model_error.txt').read_text(errors='ignore')[-2000:],
+              'case_id': CASE_ID,
+              'base_case': BASE_CASE,
+              'model': MODEL,
+              'return_code': return_code,
+              'duration_seconds': duration,
+              'score': score,
+              'checks': checks,
+              'failures': failures[:20],
+              'clean_code_tail': code[-3000:],
+              'raw_output_tail': raw_output[-1000:],
+              'error_tail': error_tail[-2000:],
           }
           (root / 'result.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
           print(json.dumps(result, indent=2))
@@ -185,7 +342,7 @@ jobs:
           if-no-files-found: error
 
   aggregate:
-    name: Aggregate and commit eight-shard report
+    name: Aggregate and commit executable report
     needs: shard
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -209,7 +366,7 @@ jobs:
           from collections import defaultdict
           from pathlib import Path
           run_id = os.environ.get('GITHUB_RUN_ID', 'local')
-          base = Path('results/eight_shard')
+          base = Path('results/executable_eight_shard')
           latest = base / 'latest'
           run_dir = base / 'runs' / run_id
           for d in (latest, run_dir):
@@ -227,8 +384,9 @@ jobs:
           for r in rows:
               by_model[r['model']].append(r['score'])
           model_summary = {m: {'n': len(v), 'mean_score': statistics.mean(v)} for m, v in sorted(by_model.items())}
+          failure_count = sum(len(r.get('failures', [])) for r in rows)
           report = {
-            'benchmark': 'CodeDriftBench-EightShardBiggerModelSmoke',
+            'benchmark': 'CodeDriftBench-ExecutableEightShardSmoke',
             'run_id': run_id,
             'expected_shards': expected,
             'observed_shards': observed,
@@ -238,30 +396,32 @@ jobs:
             'mean_model_duration_seconds': mean_duration,
             'max_model_duration_seconds': max([r['duration_seconds'] for r in rows], default=0),
             'model_summary': model_summary,
+            'failure_count': failure_count,
             'generated_at_epoch': int(time.time()),
             'rows': rows,
-            'claim': 'Fast parallel bigger-model smoke probe only; not publishable benchmark evidence.',
-            'note': 'Eight shards: four tasks on qwen2.5-coder:1.5b and four tasks on qwen2.5-coder:3b.'
+            'claim': 'Executable smoke evidence only; score is based on AST/import/runtime behavior checks, not substring matching.',
+            'note': 'Fix replaces ollama terminal capture with HTTP API and executable per-task tests.'
           }
           lines = [
-            '# CodeDriftBench Eight-Shard Bigger-Model Smoke Report',
+            '# CodeDriftBench Executable Eight-Shard Smoke Report',
             '',
             f"Run ID: `{run_id}`",
             f"Complete: **{report['complete']}** ({observed}/{expected} shards)",
             f"Missing shards: `{', '.join(missing) if missing else 'none'}`",
-            f"Mean score: **{mean_score:.3f}**",
+            f"Mean executable score: **{mean_score:.3f}**",
+            f"Failure count: **{failure_count}**",
             f"Mean model duration: **{mean_duration:.1f}s**",
             f"Max model duration: **{report['max_model_duration_seconds']}s**",
             '',
             '## Model summary',
-            '| Model | Shards | Mean score |',
+            '| Model | Shards | Mean executable score |',
             '|---|---:|---:|',
           ]
           for m, s in model_summary.items():
               lines.append(f"| {m} | {s['n']} | {s['mean_score']:.3f} |")
-          lines += ['', '## Shards', '| Case | Base case | Model | Duration | Return | Score |', '|---|---|---|---:|---:|---:|']
+          lines += ['', '## Shards', '| Case | Base case | Model | Duration | Return | Score | Failures |', '|---|---|---|---:|---:|---:|---:|']
           for r in rows:
-              lines.append(f"| {r['case_id']} | {r.get('base_case','')} | {r['model']} | {r['duration_seconds']}s | {r['return_code']} | {r['score']:.3f} |")
+              lines.append(f"| {r['case_id']} | {r.get('base_case','')} | {r['model']} | {r['duration_seconds']}s | {r['return_code']} | {r['score']:.3f} | {len(r.get('failures', []))} |")
           lines += ['', '## Claim', report['claim']]
           for d in (latest, run_dir):
               (d / 'report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
@@ -274,18 +434,18 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp -R results/eight_shard /tmp/eight_shard_results
+          cp -R results/executable_eight_shard /tmp/executable_eight_shard_results
           git reset --hard HEAD
           git pull --rebase origin main
-          rm -rf results/eight_shard/latest
-          mkdir -p results/eight_shard
-          cp -R /tmp/eight_shard_results/latest results/eight_shard/latest
-          mkdir -p results/eight_shard/runs
-          cp -R /tmp/eight_shard_results/runs/$GITHUB_RUN_ID results/eight_shard/runs/$GITHUB_RUN_ID
-          git add results/eight_shard/latest results/eight_shard/runs/$GITHUB_RUN_ID
+          rm -rf results/executable_eight_shard/latest
+          mkdir -p results/executable_eight_shard
+          cp -R /tmp/executable_eight_shard_results/latest results/executable_eight_shard/latest
+          mkdir -p results/executable_eight_shard/runs
+          cp -R /tmp/executable_eight_shard_results/runs/$GITHUB_RUN_ID results/executable_eight_shard/runs/$GITHUB_RUN_ID
+          git add results/executable_eight_shard/latest results/executable_eight_shard/runs/$GITHUB_RUN_ID
           if git diff --cached --quiet; then
-            echo "No eight-shard report changes to commit."
+            echo "No executable eight-shard report changes to commit."
           else
-            git commit -m "Add eight-shard bigger-model CodeDriftBench smoke report $GITHUB_RUN_ID [skip ci]"
+            git commit -m "Add executable eight-shard CodeDriftBench smoke report $GITHUB_RUN_ID [skip ci]"
             git push
           fi
