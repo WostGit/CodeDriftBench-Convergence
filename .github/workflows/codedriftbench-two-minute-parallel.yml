@@ -172,12 +172,11 @@ jobs:
         with:
           path: shard_results
           pattern: shard-*
-          merge-multiple: true
 
       - name: Aggregate report
         shell: python
         run: |
-          import json, os, shutil, statistics, time
+          import json, os, statistics, time
           from pathlib import Path
           run_id = os.environ.get('GITHUB_RUN_ID', 'local')
           base = Path('results/two_minute')
@@ -186,10 +185,11 @@ jobs:
           for d in (latest, run_dir):
               d.mkdir(parents=True, exist_ok=True)
           rows = []
-          for p in sorted(Path('shard_results').glob('result.json')):
+          for p in sorted(Path('shard_results').rglob('result.json')):
               rows.append(json.loads(p.read_text()))
           expected = 4
           observed = len(rows)
+          missing = sorted(set(['todo_tags','todo_done_filter','redactor_aws','config_timeout']) - {r.get('case_id') for r in rows})
           mean_score = statistics.mean([r['score'] for r in rows]) if rows else 0.0
           mean_duration = statistics.mean([r['duration_seconds'] for r in rows]) if rows else 0.0
           report = {
@@ -197,6 +197,7 @@ jobs:
             'run_id': run_id,
             'expected_shards': expected,
             'observed_shards': observed,
+            'missing_shards': missing,
             'complete': observed == expected,
             'mean_score': mean_score,
             'mean_model_duration_seconds': mean_duration,
@@ -204,13 +205,14 @@ jobs:
             'generated_at_epoch': int(time.time()),
             'rows': rows,
             'claim': 'Fast parallel execution/commit probe only; not publishable benchmark evidence.',
-            'note': 'Conflict-safe layout: immutable run directory plus latest pointer.'
+            'note': 'Artifact aggregation fixed: artifacts stay in per-shard folders and are read recursively.'
           }
           lines = [
             '# CodeDriftBench Two-Minute Parallel Smoke Report',
             '',
             f"Run ID: `{run_id}`",
             f"Complete: **{report['complete']}** ({observed}/{expected} shards)",
+            f"Missing shards: `{', '.join(missing) if missing else 'none'}`",
             f"Mean score: **{mean_score:.3f}**",
             f"Mean model duration: **{mean_duration:.1f}s**",
             f"Max model duration: **{report['max_model_duration_seconds']}s**",
