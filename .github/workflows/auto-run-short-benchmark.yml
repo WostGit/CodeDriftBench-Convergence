@@ -9,15 +9,52 @@ on:
 
 permissions:
   actions: write
-  contents: read
+  contents: write
 
 concurrency:
   group: auto-run-codedriftbench-short-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  commit-probe:
+    name: Prove result commit works
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Write commit probe result
+        shell: bash
+        run: |
+          mkdir -p results/commit_probe
+          {
+            echo "# CodeDriftBench Commit Probe"
+            echo ""
+            echo "Run ID: $GITHUB_RUN_ID"
+            echo "Commit: $GITHUB_SHA"
+            echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo ""
+            echo "This file proves GitHub Actions can commit generated benchmark artifacts back to the repository."
+          } > results/commit_probe/latest.md
+
+      - name: Commit probe result
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results/commit_probe/latest.md
+          if git diff --cached --quiet; then
+            echo "No commit-probe changes."
+          else
+            git commit -m "Add CodeDriftBench commit probe $GITHUB_RUN_ID [skip ci]"
+            git push
+          fi
+
   dispatch-short:
     name: Dispatch short real benchmark
+    needs: commit-probe
     runs-on: ubuntu-latest
     steps:
       - name: Dispatch short CodeDriftBench run
