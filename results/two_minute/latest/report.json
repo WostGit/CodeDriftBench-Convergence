@@ -1,0 +1,12 @@
+{
+  "benchmark": "CodeDriftBench-TwoMinuteParallelSmoke",
+  "expected_shards": 4,
+  "observed_shards": 0,
+  "complete": false,
+  "mean_score": 0.0,
+  "mean_model_duration_seconds": 0.0,
+  "max_model_duration_seconds": 0,
+  "generated_at_epoch": 1781396427,
+  "rows": [],
+  "claim": "Fast parallel execution/commit probe only; not publishable benchmark evidence."
+}
