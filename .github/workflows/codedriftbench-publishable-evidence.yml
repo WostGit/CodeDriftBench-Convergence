@@ -27,6 +27,7 @@ permissions:
 env:
   OLLAMA_HOST: http://127.0.0.1:11434
   PYTHONUNBUFFERED: "1"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 concurrency:
   group: codedriftbench-publishable-${{ github.ref }}-${{ github.event.inputs.evidence_profile || 'push' }}
@@ -39,13 +40,13 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       expected_slices: ${{ steps.matrix.outputs.expected_slices }}
-      profile: ${{ steps.matrix.outputs.profile }}
       expected_observations: ${{ steps.matrix.outputs.expected_observations }}
+      profile: ${{ steps.matrix.outputs.profile }}
     steps:
       - id: matrix
         shell: python
         run: |
-          import itertools, json, os
+          import itertools, json, os, re
           profile = "${{ github.event.inputs.evidence_profile || 'smoke' }}"
           if profile == 'smoke':
               models = ['baseline:copy', 'qwen2.5-coder:1.5b']
@@ -67,12 +68,15 @@ jobs:
               horizons = [5, 10, 20, 40]
           else:
               raise SystemExit(f'unknown profile: {profile}')
+          def safe(s):
+              return re.sub(r'[^A-Za-z0-9_.-]+', '_', str(s)).strip('_')
           include = []
-          for model, seed, task, strategy in itertools.product(models, seeds, tasks, strategies):
-              include.append({'model': model, 'seed': seed, 'task': task, 'strategy': strategy, 'horizons': ','.join(map(str, horizons))})
-          matrix = {'include': include}
+          for idx, (model, seed, task, strategy) in enumerate(itertools.product(models, seeds, tasks, strategies)):
+              artifact_id = f'{idx:04d}-{safe(model)}-seed{seed}-{safe(task)}-{safe(strategy)}'
+              include.append({'model': model, 'seed': seed, 'task': task, 'strategy': strategy, 'horizons': ','.join(map(str, horizons)), 'artifact_id': artifact_id})
           expected_slices = len(include)
           expected_observations = expected_slices * len(horizons)
+          matrix = {'include': include}
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write('matrix=' + json.dumps(matrix) + '\n')
               f.write(f'expected_slices={expected_slices}\n')
@@ -127,21 +131,12 @@ jobs:
           HORIZONS: ${{ matrix.horizons }}
           MODEL_TIMEOUT: ${{ github.event.inputs.model_timeout_seconds || '75' }}
         run: |
-          import ast, importlib.util, json, os, random, re, statistics, tempfile, textwrap, time, traceback, urllib.request
+          import ast, csv, importlib.util, json, os, random, re, statistics, tempfile, textwrap, time, traceback, urllib.request
           from pathlib import Path
-
-          MODEL = os.environ['MODEL']
-          SEED = int(os.environ['SEED'])
-          TASK = os.environ['TASK']
-          STRATEGY = os.environ['STRATEGY']
-          HORIZONS = [int(x) for x in os.environ['HORIZONS'].split(',') if x]
-          MODEL_TIMEOUT = int(os.environ.get('MODEL_TIMEOUT', '75'))
-          OLLAMA_HOST = os.environ.get('OLLAMA_HOST', 'http://127.0.0.1:11434')
-          rng = random.Random(SEED)
-          outdir = Path('slice_result')
-          outdir.mkdir(exist_ok=True)
-
-          BASE_CODE = textwrap.dedent('''
+          MODEL=os.environ['MODEL']; SEED=int(os.environ['SEED']); TASK=os.environ['TASK']; STRATEGY=os.environ['STRATEGY']; HORIZONS=[int(x) for x in os.environ['HORIZONS'].split(',') if x]
+          MODEL_TIMEOUT=int(os.environ.get('MODEL_TIMEOUT','75')); OLLAMA_HOST=os.environ.get('OLLAMA_HOST','http://127.0.0.1:11434')
+          outdir=Path('slice_result'); outdir.mkdir(exist_ok=True)
+          BASE_CODE=textwrap.dedent('''
           import json, re
           def add_item(items, text):
               item = {"id": len(items) + 1, "text": text, "done": False}
@@ -157,200 +152,108 @@ jobs:
               out = {"debug": False, "retries": 3, "timeout": 30}
               out.update(data)
               return out
-          ''').strip() + '\n'
-
-          REQUESTS = {
-            'todo_tags': [
-              'Add optional tags to add_item while preserving old callers and list_items.',
-              'Add tag filtering to list_items(items, tag=None) while preserving list_items(items).',
-              'Ensure tags are JSON-serializable lists and default to an empty list.'
-            ],
-            'todo_done_filter': [
-              'Add list_items(items, done=True/False) filtering while preserving list_items(items).',
-              'Add mark_done(items, item_id) without breaking add_item.',
-              'Keep list_items(items) returning every item by default.'
-            ],
-            'redactor_aws': [
-              'Also redact AWS access-key-like strings beginning with AKIA, without leaking secrets.',
-              'Add configurable replacement label while preserving the default label behavior.',
-              'Ensure email, token, secret, and AWS keys are all redacted together.'
-            ],
-            'config_timeout': [
-              'Validate that timeout must be positive while preserving parse_config(text).',
-              'Add a max_retries validation: retries must be a non-negative integer.',
-              'Preserve defaults for missing debug, retries, and timeout.'
-            ],
-            'combined_regression': [
-              'Add optional tags to add_item and preserve old callers.',
-              'Add list_items(items, done=True/False) filtering while preserving list_items(items).',
-              'Redact AWS access keys and preserve existing token, secret, and email redaction.',
-              'Validate timeout must be positive and preserve parse_config defaults.'
-            ]
+          ''').strip()+"\n"
+          REQUESTS={
+            'todo_tags':['Add optional tags to add_item while preserving old callers and list_items.','Add tag filtering to list_items(items, tag=None) while preserving list_items(items).','Ensure tags are JSON-serializable lists and default to an empty list.'],
+            'todo_done_filter':['Add list_items(items, done=True/False) filtering while preserving list_items(items).','Add mark_done(items, item_id) without breaking add_item.','Keep list_items(items) returning every item by default.'],
+            'redactor_aws':['Also redact AWS access-key-like strings beginning with AKIA, without leaking secrets.','Add configurable replacement label while preserving the default label behavior.','Ensure email, token, secret, and AWS keys are all redacted together.'],
+            'config_timeout':['Validate that timeout must be positive while preserving parse_config(text).','Add a max_retries validation: retries must be a non-negative integer.','Preserve defaults for missing debug, retries, and timeout.'],
+            'combined_regression':['Add optional tags to add_item and preserve old callers.','Add list_items(items, done=True/False) filtering while preserving list_items(items).','Redact AWS access keys and preserve existing token, secret, and email redaction.','Validate timeout must be positive and preserve parse_config defaults.']
           }
-
           def durable_constraints():
-              return '''Durable constraints that must survive every step:
-          - Python standard library only; no network calls.
-          - Preserve public APIs unless the request explicitly expands them compatibly.
-          - add_item(items, text) must keep working and mutate the passed list.
-          - list_items(items) must keep returning all items by default.
-          - redact must keep redacting emails plus token= and secret= values.
-          - parse_config must keep defaults debug=False, retries=3, timeout=30.
-          - Existing unrelated functions must not regress when editing another feature.'''
-
+              return 'Durable constraints: standard library only; preserve add_item(items,text), list_items(items), redact email/token/secret behavior, parse_config defaults; do not regress unrelated functions.'
           def prompt_for(code, request, step):
-              reminder = ''
-              if STRATEGY == 'active_constraints':
-                  reminder = '\n' + durable_constraints()
-              elif STRATEGY == 'repeated_spec':
-                  reminder = '\nRepeat and obey the original specification before editing. ' + durable_constraints()
-              return f'''You are editing a Python module for CodeDriftBench.
-          Return ONLY one Python code block containing the complete replacement file.
-          Step {step} request: {request}
-          {reminder}
-          Current file:
-          ```python
-          {code}
-          ```'''.strip()
-
+              reminder=''
+              if STRATEGY=='active_constraints': reminder='\n'+durable_constraints()
+              if STRATEGY=='repeated_spec': reminder='\nRepeat and obey the original specification. '+durable_constraints()
+              return f'''You are editing a Python module for CodeDriftBench. Return ONLY one Python code block containing the complete replacement file. Step {step} request: {request}{reminder}\nCurrent file:\n```python\n{code}\n```'''
           def strip_control(s):
-              s = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', s)
-              return ''.join(ch for ch in s if ch in '\n\r\t' or ord(ch) >= 32)
+              s=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',s)
+              return ''.join(ch for ch in s if ch in '\n\r\t' or ord(ch)>=32)
           def extract_python(s):
-              s = strip_control(s)
-              blocks = re.findall(r'```(?:python)?\s*(.*?)```', s, flags=re.S|re.I)
-              return (blocks[-1] if blocks else s).strip() + '\n'
+              s=strip_control(s); blocks=re.findall(r'```(?:python)?\s*(.*?)```',s,flags=re.S|re.I); return (blocks[-1] if blocks else s).strip()+"\n"
           def call_model(prompt, code):
-              if MODEL.startswith('baseline:'):
-                  return code
-              payload = {'model': MODEL, 'prompt': prompt, 'stream': False, 'options': {'temperature': 0, 'top_p': 1, 'seed': SEED, 'num_ctx': 4096}}
-              req = urllib.request.Request(f'{OLLAMA_HOST}/api/generate', data=json.dumps(payload).encode(), headers={'Content-Type': 'application/json'})
-              with urllib.request.urlopen(req, timeout=MODEL_TIMEOUT) as resp:
-                  return json.loads(resp.read().decode()).get('response', '')
-
+              if MODEL.startswith('baseline:'): return code
+              payload={'model':MODEL,'prompt':prompt,'stream':False,'options':{'temperature':0,'top_p':1,'seed':SEED,'num_ctx':4096}}
+              req=urllib.request.Request(f'{OLLAMA_HOST}/api/generate',data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'})
+              with urllib.request.urlopen(req,timeout=MODEL_TIMEOUT) as resp: return json.loads(resp.read().decode()).get('response','')
           def evaluate(code, active_reqs):
-              checks = {}
-              failures = []
+              checks={}; failures=[]
               def ck(name, cond, detail=''):
-                  checks[name] = bool(cond)
-                  if not cond: failures.append({'check': name, 'detail': str(detail)[:600]})
-              ck('returned_code', bool(code.strip()))
-              ck('no_control_chars', code == strip_control(code))
-              try:
-                  ast.parse(code); ck('ast_parse', True)
-              except Exception as e:
-                  ck('ast_parse', False, repr(e))
-              try:
-                  tree = ast.parse(code)
-              except Exception:
-                  tree = None
-              banned = {'requests','urllib','httpx','aiohttp','socket','subprocess'}
-              imports = set()
+                  checks[name]=bool(cond)
+                  if not cond: failures.append({'check':name,'detail':str(detail)[:600]})
+              ck('returned_code',bool(code.strip())); ck('no_control_chars',code==strip_control(code))
+              try: ast.parse(code); ck('ast_parse',True)
+              except Exception as e: ck('ast_parse',False,repr(e))
+              try: tree=ast.parse(code)
+              except Exception: tree=None
+              imports=set(); banned={'requests','urllib','httpx','aiohttp','socket','subprocess'}
               if tree:
                   for n in ast.walk(tree):
-                      if isinstance(n, ast.Import): imports |= {a.name.split('.')[0] for a in n.names}
-                      if isinstance(n, ast.ImportFrom) and n.module: imports.add(n.module.split('.')[0])
-              ck('no_network_or_process_imports', not (imports & banned), imports & banned)
+                      if isinstance(n,ast.Import): imports|={a.name.split('.')[0] for a in n.names}
+                      if isinstance(n,ast.ImportFrom) and n.module: imports.add(n.module.split('.')[0])
+              ck('no_network_or_process_imports',not(imports&banned),imports&banned)
               with tempfile.TemporaryDirectory() as d:
-                  p = Path(d)/'candidate.py'; p.write_text(code)
-                  spec = importlib.util.spec_from_file_location('candidate', p)
-                  mod = importlib.util.module_from_spec(spec)
-                  try:
-                      spec.loader.exec_module(mod); ck('module_imports', True)
-                  except Exception:
-                      ck('module_imports', False, traceback.format_exc()); mod = None
+                  p=Path(d)/'candidate.py'; p.write_text(code); spec=importlib.util.spec_from_file_location('candidate',p); mod=importlib.util.module_from_spec(spec)
+                  try: spec.loader.exec_module(mod); ck('module_imports',True)
+                  except Exception: ck('module_imports',False,traceback.format_exc()); mod=None
                   if mod:
-                      for fn in ['add_item','list_items','redact','parse_config']:
-                          ck(f'api_{fn}_exists', callable(getattr(mod, fn, None)))
-                      try:
-                          items=[]; item=mod.add_item(items,'milk')
-                          ck('legacy_add_item', len(items)==1 and item is items[0] and item.get('id')==1, items)
-                      except Exception: ck('legacy_add_item', False, traceback.format_exc())
-                      try:
-                          items=[{'id':1,'text':'x','done':False},{'id':2,'text':'y','done':True}]
-                          ck('legacy_list_items_default_all', mod.list_items(items)==items, mod.list_items(items))
-                      except Exception: ck('legacy_list_items_default_all', False, traceback.format_exc())
-                      try:
-                          red=mod.redact('a@test.com token=abcdefg secret=hijklmn')
-                          ck('legacy_redact_email_token_secret', '<EMAIL>' in red and 'a@test.com' not in red and 'abcdefg' not in red and 'hijklmn' not in red, red)
-                      except Exception: ck('legacy_redact_email_token_secret', False, traceback.format_exc())
-                      try:
-                          cfg=mod.parse_config('{}')
-                          ck('legacy_parse_defaults', cfg.get('debug') is False and cfg.get('retries')==3 and cfg.get('timeout')==30, cfg)
-                      except Exception: ck('legacy_parse_defaults', False, traceback.format_exc())
-                      if any('tags' in r for r in active_reqs):
-                          try:
-                              items=[]; x=mod.add_item(items,'milk', tags=['home'])
-                              ck('feature_tags_add', 'home' in x.get('tags',[]), x)
-                              y=mod.add_item(items,'bread')
-                              ck('feature_tags_old_caller', len(items)==2 and y.get('text')=='bread', y)
-                          except Exception: ck('feature_tags_add', False, traceback.format_exc()); ck('feature_tags_old_caller', False)
-                          try:
-                              items=[{'id':1,'text':'a','done':False,'tags':['home']},{'id':2,'text':'b','done':False,'tags':['work']}]
-                              if 'tag filtering' in ' '.join(active_reqs):
-                                  ck('feature_tag_filter', [i['id'] for i in mod.list_items(items, tag='home')]==[1], mod.list_items(items, tag='home'))
-                          except Exception: ck('feature_tag_filter', False, traceback.format_exc())
-                      if any('done=True/False' in r or 'mark_done' in r or 'returning every item' in r for r in active_reqs):
-                          try:
-                              items=[{'id':1,'text':'a','done':True},{'id':2,'text':'b','done':False}]
-                              ck('feature_done_filter_true_false', [i['id'] for i in mod.list_items(items, done=True)]==[1] and [i['id'] for i in mod.list_items(items, done=False)]==[2])
-                              ck('feature_done_filter_default_all', mod.list_items(items)==items, mod.list_items(items))
-                          except Exception: ck('feature_done_filter_true_false', False, traceback.format_exc()); ck('feature_done_filter_default_all', False)
-                          if any('mark_done' in r for r in active_reqs):
-                              try:
-                                  items=[{'id':1,'text':'a','done':False}]
-                                  mod.mark_done(items,1); ck('feature_mark_done', items[0]['done'] is True, items)
-                              except Exception: ck('feature_mark_done', False, traceback.format_exc())
-                      if any('AWS' in r for r in active_reqs):
-                          try:
-                              red=mod.redact('AKIAABCDEFGHIJKLMNOP token=abcdefg a@test.com')
-                              ck('feature_redact_aws', 'AKIAABCDEFGHIJKLMNOP' not in red and 'abcdefg' not in red and 'a@test.com' not in red, red)
-                          except Exception: ck('feature_redact_aws', False, traceback.format_exc())
-                      if any('timeout' in r for r in active_reqs):
-                          try: ck('feature_timeout_positive', mod.parse_config('{"timeout": 10}').get('timeout')==10)
-                          except Exception: ck('feature_timeout_positive', False, traceback.format_exc())
-                          try: mod.parse_config('{"timeout": 0}'); ck('feature_timeout_reject_zero', False, 'accepted')
-                          except ValueError: ck('feature_timeout_reject_zero', True)
-                          except Exception: ck('feature_timeout_reject_zero', False, traceback.format_exc())
-                      if any('retries' in r for r in active_reqs):
-                          try: ck('feature_retries_nonnegative', mod.parse_config('{"retries": 0}').get('retries')==0)
-                          except Exception: ck('feature_retries_nonnegative', False, traceback.format_exc())
-                          try: mod.parse_config('{"retries": -1}'); ck('feature_retries_reject_negative', False, 'accepted')
-                          except ValueError: ck('feature_retries_reject_negative', True)
-                          except Exception: ck('feature_retries_reject_negative', False, traceback.format_exc())
-              score = sum(checks.values())/len(checks) if checks else 0.0
-              return checks, failures, score
-
-          requests = REQUESTS[TASK]
-          code = BASE_CODE
-          active = []
-          observations = []
-          next_req_idx = 0
-          started = time.time()
-          max_h = max(HORIZONS)
-          for step in range(1, max_h+1):
-              if next_req_idx < len(requests) and (step == 1 or step % max(2, max_h//len(requests)) == 0):
-                  active.append(requests[next_req_idx])
-                  next_req_idx += 1
-              request = active[-1] if active else requests[0]
-              try:
-                  raw = call_model(prompt_for(code, request, step), code)
-                  code = extract_python(raw)
-              except Exception:
-                  code = code
+                      for fn in ['add_item','list_items','redact','parse_config']: ck(f'api_{fn}_exists',callable(getattr(mod,fn,None)))
+                      try: items=[]; item=mod.add_item(items,'milk'); ck('legacy_add_item',len(items)==1 and item is items[0] and item.get('id')==1,items)
+                      except Exception: ck('legacy_add_item',False,traceback.format_exc())
+                      try: items=[{'id':1,'text':'x','done':False},{'id':2,'text':'y','done':True}]; ck('legacy_list_items_default_all',mod.list_items(items)==items,mod.list_items(items))
+                      except Exception: ck('legacy_list_items_default_all',False,traceback.format_exc())
+                      try: red=mod.redact('a@test.com token=abcdefg secret=hijklmn'); ck('legacy_redact_email_token_secret','<EMAIL>' in red and 'a@test.com' not in red and 'abcdefg' not in red and 'hijklmn' not in red,red)
+                      except Exception: ck('legacy_redact_email_token_secret',False,traceback.format_exc())
+                      try: cfg=mod.parse_config('{}'); ck('legacy_parse_defaults',cfg.get('debug') is False and cfg.get('retries')==3 and cfg.get('timeout')==30,cfg)
+                      except Exception: ck('legacy_parse_defaults',False,traceback.format_exc())
+                      reqtxt=' '.join(active_reqs)
+                      if 'tags' in reqtxt:
+                          try: items=[]; x=mod.add_item(items,'milk',tags=['home']); ck('feature_tags_add','home' in x.get('tags',[]),x); y=mod.add_item(items,'bread'); ck('feature_tags_old_caller',len(items)==2 and y.get('text')=='bread',y)
+                          except Exception: ck('feature_tags_add',False,traceback.format_exc()); ck('feature_tags_old_caller',False)
+                      if 'tag filtering' in reqtxt:
+                          try: items=[{'id':1,'text':'a','done':False,'tags':['home']},{'id':2,'text':'b','done':False,'tags':['work']}]; ck('feature_tag_filter',[i['id'] for i in mod.list_items(items,tag='home')]==[1],mod.list_items(items,tag='home'))
+                          except Exception: ck('feature_tag_filter',False,traceback.format_exc())
+                      if 'done=True/False' in reqtxt or 'mark_done' in reqtxt or 'returning every item' in reqtxt:
+                          try: items=[{'id':1,'text':'a','done':True},{'id':2,'text':'b','done':False}]; ck('feature_done_filter_true_false',[i['id'] for i in mod.list_items(items,done=True)]==[1] and [i['id'] for i in mod.list_items(items,done=False)]==[2]); ck('feature_done_filter_default_all',mod.list_items(items)==items,mod.list_items(items))
+                          except Exception: ck('feature_done_filter_true_false',False,traceback.format_exc()); ck('feature_done_filter_default_all',False)
+                      if 'mark_done' in reqtxt:
+                          try: items=[{'id':1,'text':'a','done':False}]; mod.mark_done(items,1); ck('feature_mark_done',items[0]['done'] is True,items)
+                          except Exception: ck('feature_mark_done',False,traceback.format_exc())
+                      if 'AWS' in reqtxt:
+                          try: red=mod.redact('AKIAABCDEFGHIJKLMNOP token=abcdefg a@test.com'); ck('feature_redact_aws','AKIAABCDEFGHIJKLMNOP' not in red and 'abcdefg' not in red and 'a@test.com' not in red,red)
+                          except Exception: ck('feature_redact_aws',False,traceback.format_exc())
+                      if 'timeout' in reqtxt:
+                          try: ck('feature_timeout_positive',mod.parse_config('{"timeout": 10}').get('timeout')==10)
+                          except Exception: ck('feature_timeout_positive',False,traceback.format_exc())
+                          try: mod.parse_config('{"timeout": 0}'); ck('feature_timeout_reject_zero',False,'accepted')
+                          except ValueError: ck('feature_timeout_reject_zero',True)
+                          except Exception: ck('feature_timeout_reject_zero',False,traceback.format_exc())
+                      if 'retries' in reqtxt:
+                          try: ck('feature_retries_nonnegative',mod.parse_config('{"retries": 0}').get('retries')==0)
+                          except Exception: ck('feature_retries_nonnegative',False,traceback.format_exc())
+                          try: mod.parse_config('{"retries": -1}'); ck('feature_retries_reject_negative',False,'accepted')
+                          except ValueError: ck('feature_retries_reject_negative',True)
+                          except Exception: ck('feature_retries_reject_negative',False,traceback.format_exc())
+              score=sum(checks.values())/len(checks) if checks else 0.0
+              return checks,failures,score
+          requests=REQUESTS[TASK]; code=BASE_CODE; active=[]; observations=[]; next_req_idx=0; started=time.time(); max_h=max(HORIZONS)
+          for step in range(1,max_h+1):
+              if next_req_idx<len(requests) and (step==1 or step%max(2,max_h//len(requests))==0): active.append(requests[next_req_idx]); next_req_idx+=1
+              request=active[-1] if active else requests[0]
+              try: code=extract_python(call_model(prompt_for(code,request,step),code))
+              except Exception: pass
               if step in HORIZONS:
-                  checks, failures, score = evaluate(code, active)
-                  observations.append({'horizon': step, 'score': score, 'checks': checks, 'failures': failures[:12], 'active_requirements': list(active), 'code_tail': code[-2000:]})
-          result = {'model': MODEL, 'seed': SEED, 'task': TASK, 'strategy': STRATEGY, 'horizons': HORIZONS, 'duration_seconds': int(time.time()-started), 'observations': observations, 'final_score': observations[-1]['score'] if observations else 0.0, 'min_score': min([o['score'] for o in observations], default=0.0)}
-          safe_model = MODEL.replace(':','_').replace('/','_')
-          out = outdir / f'{safe_model}__seed{SEED}__{TASK}__{STRATEGY}.json'
-          out.write_text(json.dumps(result, indent=2), encoding='utf-8')
-          print(json.dumps({'wrote': str(out), 'final_score': result['final_score'], 'min_score': result['min_score']}, indent=2))
+                  checks,failures,score=evaluate(code,active); observations.append({'horizon':step,'score':score,'checks':checks,'failures':failures[:12],'active_requirements':list(active),'code_tail':code[-2000:]})
+          result={'model':MODEL,'seed':SEED,'task':TASK,'strategy':STRATEGY,'horizons':HORIZONS,'duration_seconds':int(time.time()-started),'observations':observations,'final_score':observations[-1]['score'] if observations else 0.0,'min_score':min([o['score'] for o in observations],default=0.0)}
+          safe_model=re.sub(r'[^A-Za-z0-9_.-]+','_',MODEL).strip('_')
+          out=outdir/f'{safe_model}__seed{SEED}__{TASK}__{STRATEGY}.json'; out.write_text(json.dumps(result,indent=2),encoding='utf-8')
+          print(json.dumps({'wrote':str(out),'final_score':result['final_score'],'min_score':result['min_score']},indent=2))
 
       - name: Upload slice artifact
         uses: actions/upload-artifact@v4
         with:
-          name: slice-${{ matrix.model }}-${{ matrix.seed }}-${{ matrix.task }}-${{ matrix.strategy }}
+          name: slice-${{ matrix.artifact_id }}
           path: slice_result/*.json
           if-no-files-found: error
 
@@ -385,49 +288,30 @@ jobs:
           rows=[]; slices=[]
           for p in sorted(Path('all_slices').rglob('*.json')):
               s=json.loads(p.read_text()); slices.append(s)
-              for o in s.get('observations',[]):
-                  rows.append({'model':s['model'],'seed':s['seed'],'task':s['task'],'strategy':s['strategy'],'horizon':o['horizon'],'score':o['score'],'failure_count':len(o.get('failures',[]))})
+              for o in s.get('observations',[]): rows.append({'model':s['model'],'seed':s['seed'],'task':s['task'],'strategy':s['strategy'],'horizon':o['horizon'],'score':o['score'],'failure_count':len(o.get('failures',[]))})
           def mean(xs): return statistics.mean(xs) if xs else float('nan')
-          def ci95(xs, n=800):
+          def ci95(xs,n=800):
               xs=[x for x in xs if not math.isnan(x)]
-              if len(xs)<2: return [mean(xs), mean(xs)]
+              if len(xs)<2: return [mean(xs),mean(xs)]
               rng=random.Random(0); vals=[]
               for _ in range(n): vals.append(mean([rng.choice(xs) for __ in xs]))
               vals.sort(); return [vals[int(.025*n)], vals[int(.975*n)]]
           by_model=defaultdict(list); by_strategy=defaultdict(list); by_horizon=defaultdict(list)
-          for r in rows:
-              by_model[r['model']].append(r['score']); by_strategy[r['strategy']].append(r['score']); by_horizon[r['horizon']].append(r['score'])
+          for r in rows: by_model[r['model']].append(r['score']); by_strategy[r['strategy']].append(r['score']); by_horizon[r['horizon']].append(r['score'])
           model_summary={m:{'n':len(v),'mean_score':mean(v),'ci95':ci95(v)} for m,v in sorted(by_model.items())}
           strategy_summary={m:{'n':len(v),'mean_score':mean(v),'ci95':ci95(v)} for m,v in sorted(by_strategy.items())}
           horizon_summary={str(m):{'n':len(v),'mean_score':mean(v),'ci95':ci95(v)} for m,v in sorted(by_horizon.items())}
-          nonbaseline=[r['score'] for r in rows if not r['model'].startswith('baseline:')]
-          baseline=[r['score'] for r in rows if r['model'].startswith('baseline:')]
-          final_scores=[s.get('final_score',0) for s in slices]
-          completeness=len(slices)/expected_slices if expected_slices else 0
-          nontrivial=abs(mean(nonbaseline)-mean(baseline)) >= 0.02 if baseline and nonbaseline else False
-          model_count=len({s['model'] for s in slices if not s['model'].startswith('baseline:')})
-          task_count=len({s['task'] for s in slices}); seed_count=len({s['seed'] for s in slices}); horizon_count=len({r['horizon'] for r in rows}); strategy_count=len({s['strategy'] for s in slices})
-          gates={
-            'complete_run': len(slices)==expected_slices and len(rows)==expected_obs,
-            'has_baseline': any(s['model'].startswith('baseline:') for s in slices),
-            'enough_nonbaseline_models': model_count>=2,
-            'enough_tasks': task_count>=4,
-            'enough_seeds': seed_count>=3,
-            'enough_horizons': horizon_count>=3,
-            'strategy_ablation': strategy_count>=2,
-            'executable_scoring': True,
-            'reports_uncertainty': True,
-            'nontrivial_signal': nontrivial,
-            'enough_observations': len(rows)>=200,
-          }
-          publishable = all(gates.values())
-          result={'benchmark':'CodeDriftBench-PublishableEvidence','profile':profile,'run_id':run_id,'generated_at_epoch':int(time.time()),'expected_slices':expected_slices,'observed_slices':len(slices),'expected_observations':expected_obs,'observed_observations':len(rows),'completeness':completeness,'mean_score':mean([r['score'] for r in rows]),'ci95':ci95([r['score'] for r in rows]),'baseline_mean':mean(baseline),'nonbaseline_mean':mean(nonbaseline),'model_summary':model_summary,'strategy_summary':strategy_summary,'horizon_summary':horizon_summary,'gates':gates,'publishable_evidence':publishable,'claim_card':('Publishable benchmark evidence package' if publishable else 'Not publishable yet; see failed gates')}
+          nonbaseline=[r['score'] for r in rows if not r['model'].startswith('baseline:')]; baseline=[r['score'] for r in rows if r['model'].startswith('baseline:')]
+          nontrivial=abs(mean(nonbaseline)-mean(baseline))>=0.02 if baseline and nonbaseline else False
+          model_count=len({s['model'] for s in slices if not s['model'].startswith('baseline:')}); task_count=len({s['task'] for s in slices}); seed_count=len({s['seed'] for s in slices}); horizon_count=len({r['horizon'] for r in rows}); strategy_count=len({s['strategy'] for s in slices})
+          gates={'complete_run':len(slices)==expected_slices and len(rows)==expected_obs,'has_baseline':any(s['model'].startswith('baseline:') for s in slices),'enough_nonbaseline_models':model_count>=2,'enough_tasks':task_count>=4,'enough_seeds':seed_count>=3,'enough_horizons':horizon_count>=3,'strategy_ablation':strategy_count>=2,'executable_scoring':True,'reports_uncertainty':True,'nontrivial_signal':nontrivial,'enough_observations':len(rows)>=200}
+          publishable=all(gates.values())
+          result={'benchmark':'CodeDriftBench-PublishableEvidence','profile':profile,'run_id':run_id,'generated_at_epoch':int(time.time()),'expected_slices':expected_slices,'observed_slices':len(slices),'expected_observations':expected_obs,'observed_observations':len(rows),'completeness':len(slices)/expected_slices if expected_slices else 0,'mean_score':mean([r['score'] for r in rows]),'ci95':ci95([r['score'] for r in rows]),'baseline_mean':mean(baseline),'nonbaseline_mean':mean(nonbaseline),'model_summary':model_summary,'strategy_summary':strategy_summary,'horizon_summary':horizon_summary,'gates':gates,'publishable_evidence':publishable,'claim_card':('Publishable benchmark evidence package' if publishable else 'Not publishable yet; see failed gates')}
           base=Path('results/publishable_evidence')/profile; latest=base/'latest'; run_dir=base/'runs'/run_id
           for d in (latest,run_dir): d.mkdir(parents=True,exist_ok=True)
           for d in (latest,run_dir):
               (d/'report.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
-              with (d/'observations.csv').open('w',newline='') as f:
-                  w=csv.DictWriter(f,fieldnames=['model','seed','task','strategy','horizon','score','failure_count']); w.writeheader(); w.writerows(rows)
+              with (d/'observations.csv').open('w',newline='') as f: w=csv.DictWriter(f,fieldnames=['model','seed','task','strategy','horizon','score','failure_count']); w.writeheader(); w.writerows(rows)
           lines=['# CodeDriftBench Publishable Evidence Report','',f'Profile: `{profile}`',f'Run ID: `{run_id}`',f'Observed slices: **{len(slices)}/{expected_slices}**',f'Observed observations: **{len(rows)}/{expected_obs}**',f'Mean executable score: **{result["mean_score"]:.3f}**',f'95% bootstrap CI: **[{result["ci95"][0]:.3f}, {result["ci95"][1]:.3f}]**',f'Baseline mean: **{result["baseline_mean"]:.3f}**',f'Nonbaseline mean: **{result["nonbaseline_mean"]:.3f}**',f'Publishable evidence: **{publishable}**','','## Gates','| Gate | Status |','|---|---:|']
           for k,v in gates.items(): lines.append(f'| {k} | {"PASS" if v else "FAIL"} |')
           lines += ['','## Model summary','| Model | N | Mean | CI95 |','|---|---:|---:|---|']
