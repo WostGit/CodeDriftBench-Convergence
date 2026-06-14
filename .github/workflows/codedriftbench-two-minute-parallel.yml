@@ -1,0 +1,234 @@
+name: CodeDriftBench Two-Minute Parallel Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Ollama model tag for each shard"
+        required: false
+        default: "qwen2.5-coder:0.5b"
+      model_timeout_seconds:
+        description: "Hard timeout per shard model call"
+        required: false
+        default: "25"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/codedriftbench-two-minute-parallel.yml"
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  MODEL_DEFAULT: qwen2.5-coder:0.5b
+  MODEL_TIMEOUT_DEFAULT: "25"
+
+concurrency:
+  group: codedriftbench-two-minute-parallel-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shard:
+    name: ${{ matrix.case_id }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - case_id: todo_tags
+            module_name: todo.py
+            request: "Add optional tags to add_item while preserving old callers and list_items."
+            must_have: "def add_item|def list_items|tags|json"
+          - case_id: todo_done_filter
+            module_name: todo.py
+            request: "Add list_items(done=True/False) filtering while preserving stable JSON storage."
+            must_have: "def add_item|def list_items|done|json"
+          - case_id: redactor_aws
+            module_name: redactor.py
+            request: "Also redact AWS access-key-like strings beginning with AKIA, without leaking secrets."
+            must_have: "def redact|AKIA|re|REDACT"
+          - case_id: config_timeout
+            module_name: config_parser.py
+            request: "Validate that timeout must be positive while preserving parse_config(text)."
+            must_have: "def parse_config|timeout|ValueError|json"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set runtime inputs
+        shell: bash
+        run: |
+          echo "MODEL=${{ github.event.inputs.model || env.MODEL_DEFAULT }}" >> "$GITHUB_ENV"
+          echo "MODEL_TIMEOUT=${{ github.event.inputs.model_timeout_seconds || env.MODEL_TIMEOUT_DEFAULT }}" >> "$GITHUB_ENV"
+
+      - name: Install Ollama
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve > ollama.log 2>&1 &
+          echo $! > ollama.pid
+          sleep 5
+          ollama --version || true
+
+      - name: Pull model
+        shell: bash
+        run: |
+          set -euo pipefail
+          ollama pull "$MODEL"
+          ollama list > ollama_list.txt || true
+
+      - name: Run one bounded model call
+        shell: bash
+        run: |
+          set +e
+          mkdir -p shard_result
+          cat > prompt.txt <<PROMPT
+          You are editing ${{ matrix.module_name }} for CodeDriftBench.
+          Return ONLY one Python code block containing the complete replacement file.
+          Preserve durable constraints: stable public API, Python standard library only, no network calls, no secret leakage, and existing behavior unless the request explicitly changes it.
+          Current file:
+          \`\`\`python
+          import json, re
+          def add_item(items, text):
+              item = {"id": len(items) + 1, "text": text, "done": False}
+              items.append(item)
+              return item
+          def list_items(items):
+              return items
+          def redact(text, label="<REDACTED>"):
+              text = re.sub(r"(?i)(token|secret)=([A-Za-z0-9_-]{6,})", lambda m: m.group(1)+"="+label, text)
+              return re.sub(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", "<EMAIL>", text)
+          def parse_config(text):
+              data = json.loads(text) if text.strip() else {}
+              out = {"debug": False, "retries": 3, "timeout": 30}
+              out.update(data)
+              return out
+          \`\`\`
+          Request: ${{ matrix.request }}
+          PROMPT
+          START=$(date +%s)
+          timeout "${MODEL_TIMEOUT}s" ollama run "$MODEL" < prompt.txt > shard_result/model_output.txt 2> shard_result/model_error.txt
+          RC=$?
+          END=$(date +%s)
+          printf '%s\n' "${{ matrix.case_id }}" > shard_result/case_id.txt
+          printf '%s\n' "$MODEL" > shard_result/model.txt
+          printf '%s\n' "$RC" > shard_result/return_code.txt
+          printf '%s\n' "$((END-START))" > shard_result/duration_seconds.txt
+          printf '%s\n' "${{ matrix.must_have }}" > shard_result/must_have.txt
+          exit 0
+
+      - name: Evaluate shard
+        shell: python
+        run: |
+          import json, re
+          from pathlib import Path
+          root = Path('shard_result')
+          text = (root / 'model_output.txt').read_text(errors='ignore')
+          blocks = re.findall(r"```(?:python)?\s*(.*?)```", text, flags=re.S | re.I)
+          code = blocks[-1] if blocks else text
+          must = (root / 'must_have.txt').read_text().strip().split('|')
+          checks = {f'contains_{m}': (m in code) for m in must if m}
+          checks['returned_code'] = bool(code.strip())
+          checks['no_external_dependency_hint'] = 'import requests' not in code and 'pip ' not in code.lower()
+          score = sum(checks.values()) / len(checks) if checks else 0.0
+          result = {
+            'case_id': (root / 'case_id.txt').read_text().strip(),
+            'model': (root / 'model.txt').read_text().strip(),
+            'return_code': int((root / 'return_code.txt').read_text().strip()),
+            'duration_seconds': int((root / 'duration_seconds.txt').read_text().strip()),
+            'score': score,
+            'checks': checks,
+            'output_tail': text[-2000:],
+            'error_tail': (root / 'model_error.txt').read_text(errors='ignore')[-2000:],
+          }
+          (root / 'result.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
+          print(json.dumps(result, indent=2))
+
+      - name: Upload shard result
+        uses: actions/upload-artifact@v4
+        with:
+          name: shard-${{ matrix.case_id }}
+          path: shard_result/result.json
+          if-no-files-found: error
+
+  aggregate:
+    name: Aggregate and commit two-minute report
+    needs: shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Download shard artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: shard_results
+          pattern: shard-*
+          merge-multiple: true
+
+      - name: Aggregate report
+        shell: python
+        run: |
+          import json, statistics, time
+          from pathlib import Path
+          out = Path('results/two_minute/latest')
+          out.mkdir(parents=True, exist_ok=True)
+          rows = []
+          for p in sorted(Path('shard_results').glob('result.json')):
+              rows.append(json.loads(p.read_text()))
+          expected = 4
+          observed = len(rows)
+          mean_score = statistics.mean([r['score'] for r in rows]) if rows else 0.0
+          mean_duration = statistics.mean([r['duration_seconds'] for r in rows]) if rows else 0.0
+          report = {
+            'benchmark': 'CodeDriftBench-TwoMinuteParallelSmoke',
+            'expected_shards': expected,
+            'observed_shards': observed,
+            'complete': observed == expected,
+            'mean_score': mean_score,
+            'mean_model_duration_seconds': mean_duration,
+            'max_model_duration_seconds': max([r['duration_seconds'] for r in rows], default=0),
+            'generated_at_epoch': int(time.time()),
+            'rows': rows,
+            'claim': 'Fast parallel execution/commit probe only; not publishable benchmark evidence.'
+          }
+          (out / 'report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          lines = [
+            '# CodeDriftBench Two-Minute Parallel Smoke Report',
+            '',
+            f"Complete: **{report['complete']}** ({observed}/{expected} shards)",
+            f"Mean score: **{mean_score:.3f}**",
+            f"Mean model duration: **{mean_duration:.1f}s**",
+            f"Max model duration: **{report['max_model_duration_seconds']}s**",
+            '',
+            '| Case | Model | Duration | Return | Score |',
+            '|---|---|---:|---:|---:|',
+          ]
+          for r in rows:
+              lines.append(f"| {r['case_id']} | {r['model']} | {r['duration_seconds']}s | {r['return_code']} | {r['score']:.3f} |")
+          lines += ['', '## Claim', report['claim']]
+          (out / 'report.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          print('\n'.join(lines))
+
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results/two_minute/latest/
+          if git diff --cached --quiet; then
+            echo "No two-minute report changes to commit."
+          else
+            git commit -m "Add two-minute parallel CodeDriftBench smoke report $GITHUB_RUN_ID [skip ci]"
+            git pull --rebase origin main
+            git push
+          fi
