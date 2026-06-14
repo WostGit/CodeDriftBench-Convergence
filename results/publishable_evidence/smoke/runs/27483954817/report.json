@@ -1,0 +1,36 @@
+{
+  "benchmark": "CodeDriftBench-PublishableEvidence",
+  "profile": "smoke",
+  "run_id": "27483954817",
+  "generated_at_epoch": 1781398364,
+  "expected_slices": 4,
+  "observed_slices": 0,
+  "expected_observations": 4,
+  "observed_observations": 0,
+  "completeness": 0.0,
+  "mean_score": NaN,
+  "ci95": [
+    NaN,
+    NaN
+  ],
+  "baseline_mean": NaN,
+  "nonbaseline_mean": NaN,
+  "model_summary": {},
+  "strategy_summary": {},
+  "horizon_summary": {},
+  "gates": {
+    "complete_run": false,
+    "has_baseline": false,
+    "enough_nonbaseline_models": false,
+    "enough_tasks": false,
+    "enough_seeds": false,
+    "enough_horizons": false,
+    "strategy_ablation": false,
+    "executable_scoring": true,
+    "reports_uncertainty": true,
+    "nontrivial_signal": false,
+    "enough_observations": false
+  },
+  "publishable_evidence": false,
+  "claim_card": "Not publishable yet; see failed gates"
+}
