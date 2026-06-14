@@ -1,0 +1,162 @@
+name: CodeDriftBench One-Minute Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Ollama model tag for the one-call smoke run"
+        required: false
+        default: "qwen2.5-coder:0.5b"
+      model_timeout_seconds:
+        description: "Hard timeout for the single model call"
+        required: false
+        default: "20"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/codedriftbench-one-minute-smoke.yml"
+
+permissions:
+  contents: write
+
+env:
+  RESULT_DIR: results/one_minute/latest
+
+concurrency:
+  group: codedriftbench-one-minute-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  one-minute-smoke:
+    name: One model call, fast report commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set runtime inputs
+        shell: bash
+        run: |
+          echo "MODEL=${{ github.event.inputs.model || 'qwen2.5-coder:0.5b' }}" >> "$GITHUB_ENV"
+          echo "MODEL_TIMEOUT=${{ github.event.inputs.model_timeout_seconds || '20' }}" >> "$GITHUB_ENV"
+
+      - name: Install Ollama
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve > ollama.log 2>&1 &
+          echo $! > ollama.pid
+          sleep 5
+          ollama --version || true
+
+      - name: Pull model
+        shell: bash
+        run: |
+          set -euo pipefail
+          ollama pull "$MODEL"
+          ollama list > ollama_list.txt || true
+
+      - name: Run exactly one model edit
+        id: model_run
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$RESULT_DIR"
+          cat > prompt.txt <<'PROMPT'
+          You are editing a tiny Python todo module.
+          Return ONLY one Python code block containing the complete file.
+          Preserve these durable constraints:
+          - store todos in JSON
+          - keep add_item and list_items APIs
+          - use only the Python standard library
+          Current file:
+          ```python
+          import json
+          def add_item(items, text):
+              item = {"id": len(items) + 1, "text": text, "done": False}
+              items.append(item)
+              return item
+          def list_items(items):
+              return items
+          ```
+          Request: add optional tags to add_item while preserving old callers.
+          PROMPT
+          START=$(date +%s)
+          timeout "${MODEL_TIMEOUT}s" ollama run "$MODEL" < prompt.txt > model_output.txt 2> model_error.txt
+          RC=$?
+          END=$(date +%s)
+          echo "return_code=$RC" >> "$GITHUB_OUTPUT"
+          echo "duration_seconds=$((END-START))" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$RC" > "$RESULT_DIR/model_return_code.txt"
+          printf '%s\n' "$((END-START))" > "$RESULT_DIR/model_duration_seconds.txt"
+          exit 0
+
+      - name: Evaluate and write report in under one minute
+        shell: python
+        run: |
+          import json, re, time
+          from pathlib import Path
+          out_dir = Path("results/one_minute/latest")
+          out_dir.mkdir(parents=True, exist_ok=True)
+          model_output = Path("model_output.txt").read_text(errors="ignore") if Path("model_output.txt").exists() else ""
+          model_error = Path("model_error.txt").read_text(errors="ignore") if Path("model_error.txt").exists() else ""
+          blocks = re.findall(r"```(?:python)?\s*(.*?)```", model_output, flags=re.S | re.I)
+          code = blocks[-1].strip() if blocks else model_output.strip()
+          checks = {
+              "returned_code": bool(code),
+              "preserved_add_item": "def add_item" in code,
+              "preserved_list_items": "def list_items" in code,
+              "json_constraint_survived": "json" in code.lower(),
+              "tags_requested_feature": "tag" in code.lower(),
+              "no_external_dependency_hint": "import requests" not in code and "pip" not in code.lower(),
+          }
+          score = sum(checks.values()) / len(checks)
+          report = {
+              "benchmark": "CodeDriftBench-OneMinuteSmoke",
+              "model": "${{ env.MODEL }}",
+              "model_timeout_seconds": int("${{ env.MODEL_TIMEOUT }}"),
+              "model_return_code": int(Path(out_dir / "model_return_code.txt").read_text().strip()),
+              "model_duration_seconds": int(Path(out_dir / "model_duration_seconds.txt").read_text().strip()),
+              "checks": checks,
+              "score": score,
+              "raw_output_tail": model_output[-2000:],
+              "raw_error_tail": model_error[-2000:],
+              "generated_at_epoch": int(time.time()),
+          }
+          (out_dir / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+          md = [
+              "# CodeDriftBench One-Minute Smoke Report",
+              "",
+              f"Model: `{report['model']}`",
+              f"Model timeout: `{report['model_timeout_seconds']}s`",
+              f"Model duration: `{report['model_duration_seconds']}s`",
+              f"Model return code: `{report['model_return_code']}`",
+              f"Score: **{score:.3f}**",
+              "",
+              "## Checks",
+          ]
+          for k, v in checks.items():
+              md.append(f"- {'PASS' if v else 'FAIL'} `{k}`")
+          md += ["", "## Claim", "This is a fast execution/commit probe, not publishable benchmark evidence."]
+          (out_dir / "report.md").write_text("\n".join(md) + "\n", encoding="utf-8")
+          (out_dir / "model_output_tail.txt").write_text(model_output[-4000:], encoding="utf-8")
+          print("\n".join(md))
+
+      - name: Commit one-minute report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results/one_minute/latest/
+          if git diff --cached --quiet; then
+            echo "No one-minute report changes to commit."
+          else
+            git commit -m "Add one-minute CodeDriftBench smoke report $GITHUB_RUN_ID [skip ci]"
+            git pull --rebase origin main
+            git push
+          fi
