@@ -198,7 +198,8 @@ jobs:
             'max_model_duration_seconds': max([r['duration_seconds'] for r in rows], default=0),
             'generated_at_epoch': int(time.time()),
             'rows': rows,
-            'claim': 'Fast parallel execution/commit probe only; not publishable benchmark evidence.'
+            'claim': 'Fast parallel execution/commit probe only; not publishable benchmark evidence.',
+            'note': 'Triggered after workflow creation to verify parallel free-runner execution.'
           }
           (out / 'report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
           lines = [
