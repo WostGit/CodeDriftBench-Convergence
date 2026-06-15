@@ -1,5 +1,8 @@
 name: CodeDriftBench Publishable Evidence
 
+# Single-YAML benchmark artifact. It answers whether specification drift converges,
+# plateaus, or compounds across repeated executable code edits.
+
 on:
   workflow_dispatch:
     inputs:
@@ -79,17 +82,24 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Ollama for non-baseline models
         if: ${{ !startsWith(matrix.model, 'baseline:') }}
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
+          set +e
           curl -fsSL https://ollama.com/install.sh | sh
           ollama serve > ollama.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1 && exit 0 || sleep 1; done
-          cat ollama.log || true; exit 1
+          cat ollama.log || true
+          exit 0
       - name: Pull model
         if: ${{ !startsWith(matrix.model, 'baseline:') }}
+        continue-on-error: true
         shell: bash
-        run: ollama pull "${{ matrix.model }}"
+        run: |
+          set +e
+          ollama pull "${{ matrix.model }}"
+          ollama list || true
+          exit 0
       - name: Run longitudinal executable slice
         shell: python
         env:
@@ -98,13 +108,17 @@ jobs:
           TASK: ${{ matrix.task }}
           STRATEGY: ${{ matrix.strategy }}
           HORIZONS: ${{ matrix.horizons }}
+          ARTIFACT_ID: ${{ matrix.artifact_id }}
           MODEL_TIMEOUT: ${{ github.event.inputs.model_timeout_seconds || '75' }}
         run: |
           import ast, importlib.util, json, os, re, tempfile, textwrap, time, traceback, urllib.request
           from pathlib import Path
           MODEL=os.environ['MODEL']; SEED=int(os.environ['SEED']); TASK=os.environ['TASK']; STRATEGY=os.environ['STRATEGY']; HORIZONS=[int(x) for x in os.environ['HORIZONS'].split(',') if x]
-          MODEL_TIMEOUT=int(os.environ.get('MODEL_TIMEOUT','75')); OLLAMA_HOST=os.environ.get('OLLAMA_HOST','http://127.0.0.1:11434')
+          ARTIFACT_ID=os.environ.get('ARTIFACT_ID','unknown'); MODEL_TIMEOUT=int(os.environ.get('MODEL_TIMEOUT','75')); OLLAMA_HOST=os.environ.get('OLLAMA_HOST','http://127.0.0.1:11434')
           outdir=Path('slice_result'); outdir.mkdir(exist_ok=True)
+          events=[]; raw_errors=[]; debug_lines=[]; model_call_failure_count=0; parse_failure_count=0; fallback_to_previous_code_count=0; empty_response_count=0; total_model_calls=0
+          def log(stage,status,**kw):
+              rec={'time':time.time(),'stage':stage,'status':status,**kw}; events.append(rec); debug_lines.append(json.dumps(rec,sort_keys=True)[:4000])
           BASE_CODE=textwrap.dedent('''
           import json, re
           def add_item(items, text):
@@ -134,19 +148,24 @@ jobs:
               if STRATEGY=='repeated_spec': reminder='\nRepeat the durable constraints before coding. '+DURABLE
               return f'Return ONLY a complete Python code block. Step {step} request: {request}{reminder}\nCurrent file:\n```python\n{code}\n```'
           def strip_control(s):
-              s=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',s); return ''.join(ch for ch in s if ch in '\n\r\t' or ord(ch)>=32)
+              s=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',s or ''); return ''.join(ch for ch in s if ch in '\n\r\t' or ord(ch)>=32)
           def extract_python(s):
               s=strip_control(s); blocks=re.findall(r'```(?:python)?\s*(.*?)```',s,flags=re.S|re.I); return (blocks[-1] if blocks else s).strip()+"\n"
           def call_model(prompt, code):
-              if MODEL.startswith('baseline:'): return code
+              if MODEL.startswith('baseline:'): return code, {'model_status':'baseline_copy','raw_response_chars':len(code)}
               payload={'model':MODEL,'prompt':prompt,'stream':False,'options':{'temperature':0,'top_p':1,'seed':SEED,'num_ctx':4096}}
-              req=urllib.request.Request(f'{OLLAMA_HOST}/api/generate',data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'})
-              with urllib.request.urlopen(req,timeout=MODEL_TIMEOUT) as resp: return json.loads(resp.read().decode()).get('response','')
+              req=urllib.request.Request(f'{OLLAMA_HOST}/api/generate',data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'}); started=time.time()
+              with urllib.request.urlopen(req,timeout=MODEL_TIMEOUT) as resp: response=json.loads(resp.read().decode()).get('response','')
+              return response, {'model_status':'ok','model_call_seconds':round(time.time()-started,3),'raw_response_chars':len(response)}
           def evaluate(code, active_reqs):
               hygiene={}; legacy={}; feature={}; failures=[]
               def ck(bucket,name,cond,detail=''):
                   bucket[name]=bool(cond)
-                  if not cond: failures.append({'check':name,'detail':str(detail)[:500]})
+                  if not cond: failures.append({'check':name,'detail':str(detail)[:700]})
+              def expect_value_error(bucket,name,fn):
+                  try: fn(); ck(bucket,name,False,'accepted')
+                  except ValueError: ck(bucket,name,True)
+                  except Exception: ck(bucket,name,False,traceback.format_exc())
               ck(hygiene,'returned_code',bool(code.strip())); ck(hygiene,'no_control_chars',code==strip_control(code))
               try: ast.parse(code); ck(hygiene,'ast_parse',True)
               except Exception as e: ck(hygiene,'ast_parse',False,repr(e))
@@ -172,6 +191,8 @@ jobs:
                       except Exception: ck(legacy,'redact_legacy_secrets',False,traceback.format_exc())
                       try: cfg=mod.parse_config('{}'); ck(legacy,'parse_config_defaults',cfg.get('debug') is False and cfg.get('retries')==3 and cfg.get('timeout')==30,cfg)
                       except Exception: ck(legacy,'parse_config_defaults',False,traceback.format_exc())
+                      try: cfg=mod.parse_config('{"timeout": 10, "retries": 0}'); ck(legacy,'parse_config_valid_overrides',cfg.get('timeout')==10 and cfg.get('retries')==0,cfg)
+                      except Exception: ck(legacy,'parse_config_valid_overrides',False,traceback.format_exc())
                       req=' '.join(active_reqs)
                       if 'tags' in req:
                           try: items=[]; x=mod.add_item(items,'milk',tags=['home']); ck(feature,'tags_add','home' in x.get('tags',[]),x); y=mod.add_item(items,'bread'); ck(feature,'tags_old_caller',len(items)==2 and y.get('text')=='bread',y)
@@ -189,39 +210,49 @@ jobs:
                           try: red=mod.redact('AKIAABCDEFGHIJKLMNOP token=abcdefg a@test.com'); ck(feature,'redact_aws','AKIAABCDEFGHIJKLMNOP' not in red and 'abcdefg' not in red and 'a@test.com' not in red,red)
                           except Exception: ck(feature,'redact_aws',False,traceback.format_exc())
                       if 'timeout' in req:
-                          try: ck(feature,'timeout_positive',mod.parse_config('{"timeout": 10}').get('timeout')==10)
-                          except Exception: ck(feature,'timeout_positive',False,traceback.format_exc())
-                          try: mod.parse_config('{"timeout": 0}'); ck(feature,'timeout_reject_zero',False,'accepted')
-                          except ValueError: ck(feature,'timeout_reject_zero',True)
-                          except Exception: ck(feature,'timeout_reject_zero',False,traceback.format_exc())
+                          expect_value_error(feature,'timeout_reject_zero',lambda: mod.parse_config('{"timeout": 0}'))
+                          expect_value_error(feature,'timeout_reject_negative',lambda: mod.parse_config('{"timeout": -1}'))
                       if 'retries' in req:
-                          try: ck(feature,'retries_nonnegative',mod.parse_config('{"retries": 0}').get('retries')==0)
-                          except Exception: ck(feature,'retries_nonnegative',False,traceback.format_exc())
-                          try: mod.parse_config('{"retries": -1}'); ck(feature,'retries_reject_negative',False,'accepted')
-                          except ValueError: ck(feature,'retries_reject_negative',True)
-                          except Exception: ck(feature,'retries_reject_negative',False,traceback.format_exc())
+                          expect_value_error(feature,'retries_reject_negative',lambda: mod.parse_config('{"retries": -1}'))
+                          expect_value_error(feature,'retries_reject_string',lambda: mod.parse_config('{"retries": "abc"}'))
+                          expect_value_error(feature,'retries_reject_float',lambda: mod.parse_config('{"retries": 1.5}'))
               def avg(d): return sum(d.values())/len(d) if d else 1.0
-              legacy_score=avg(legacy); feature_score=avg(feature); hygiene_score=avg(hygiene)
-              spec_score=0.25*hygiene_score+0.35*legacy_score+0.40*feature_score
-              silent_spec_failure=legacy_score>=0.90 and feature_score<0.50
+              legacy_score=avg(legacy); feature_score=avg(feature); hygiene_score=avg(hygiene); spec_score=0.25*hygiene_score+0.35*legacy_score+0.40*feature_score; ssfr=legacy_score>=0.90 and feature_score<0.50
               all_checks={f'hygiene_{k}':v for k,v in hygiene.items()}|{f'legacy_{k}':v for k,v in legacy.items()}|{f'feature_{k}':v for k,v in feature.items()}
-              return all_checks,failures,legacy_score,feature_score,hygiene_score,spec_score,silent_spec_failure
-          requests=REQUESTS[TASK]; code=BASE_CODE; active=[]; observations=[]; next_req=0; started=time.time(); max_h=max(HORIZONS)
-          for step in range(1,max_h+1):
-              if next_req<len(requests) and (step==1 or step%max(2,max_h//len(requests))==0): active.append(requests[next_req]); next_req+=1
-              try: code=extract_python(call_model(prompt_for(code,active[-1],step),code))
-              except Exception: pass
-              if step in HORIZONS:
-                  checks,failures,legacy_score,feature_score,hygiene_score,spec_score,ssfr=evaluate(code,active)
-                  observations.append({'horizon':step,'legacy_score':legacy_score,'feature_score':feature_score,'hygiene_score':hygiene_score,'spec_score':spec_score,'silent_spec_failure':ssfr,'checks':checks,'failures':failures[:12],'active_requirements':list(active),'code_tail':code[-1200:]})
-          result={'model':MODEL,'seed':SEED,'task':TASK,'strategy':STRATEGY,'horizons':HORIZONS,'duration_seconds':int(time.time()-started),'observations':observations,'final_spec_score':observations[-1]['spec_score'] if observations else 0,'final_feature_score':observations[-1]['feature_score'] if observations else 0}
-          safe_model=re.sub(r'[^A-Za-z0-9_.-]+','_',MODEL).strip('_'); (outdir/f'{safe_model}__seed{SEED}__{TASK}__{STRATEGY}.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
-          print(json.dumps({'final_spec_score':result['final_spec_score'],'final_feature_score':result['final_feature_score']},indent=2))
+              return all_checks,failures,legacy_score,feature_score,hygiene_score,spec_score,ssfr
+          started=time.time(); result={'schema_version':2,'slice_status':'started','fatal_error':None,'artifact_id':ARTIFACT_ID,'model':MODEL,'seed':SEED,'task':TASK,'strategy':STRATEGY,'horizons':HORIZONS,'events':events,'raw_errors':raw_errors,'observations':[]}; code=BASE_CODE
+          try:
+              requests=REQUESTS[TASK]; active=[]; observations=[]; next_req=0; max_h=max(HORIZONS)
+              for step in range(1,max_h+1):
+                  if next_req<len(requests) and (step==1 or step%max(2,max_h//len(requests))==0): active.append(requests[next_req]); next_req+=1
+                  model_call_ok=False; parse_ok=False; edit_applied=False; fallback=False; model_status='not_called'; raw_response_chars=0; total_model_calls += 1
+                  try:
+                      raw, meta = call_model(prompt_for(code,active[-1],step),code); model_call_ok=True; model_status=meta.get('model_status','ok'); raw_response_chars=meta.get('raw_response_chars',0)
+                      if raw_response_chars == 0: empty_response_count += 1
+                      candidate=extract_python(raw)
+                      try: ast.parse(candidate); code=candidate; parse_ok=True; edit_applied=True
+                      except Exception as e:
+                          parse_failure_count += 1; fallback_to_previous_code_count += 1; fallback=True; raw_errors.append({'stage':'parse_candidate','step':step,'error_type':type(e).__name__,'traceback':traceback.format_exc()[-4000:]})
+                  except Exception as e:
+                      model_call_failure_count += 1; fallback_to_previous_code_count += 1; fallback=True; model_status=f'failed:{type(e).__name__}'; raw_errors.append({'stage':'model_call','step':step,'error_type':type(e).__name__,'error':str(e),'traceback':traceback.format_exc()[-4000:]})
+                  log('edit_step','ok' if model_call_ok and parse_ok else 'fallback',step=step,model_status=model_status,raw_response_chars=raw_response_chars,parse_ok=parse_ok,edit_applied=edit_applied,fallback=fallback)
+                  if step in HORIZONS:
+                      checks,failures,legacy_score,feature_score,hygiene_score,spec_score,ssfr=evaluate(code,active); infra_clean=(model_call_failure_count==0 and parse_failure_count==0 and fallback_to_previous_code_count==0)
+                      observations.append({'horizon':step,'legacy_score':legacy_score,'feature_score':feature_score,'hygiene_score':hygiene_score,'spec_score':spec_score,'silent_spec_failure':ssfr,'infra_clean':infra_clean,'model_call_failure_count_so_far':model_call_failure_count,'parse_failure_count_so_far':parse_failure_count,'fallback_to_previous_code_count_so_far':fallback_to_previous_code_count,'checks':checks,'failures':failures[:12],'active_requirements':list(active),'code_tail':code[-1200:]})
+              result['observations']=observations; result['slice_status']='completed'
+          except Exception as e:
+              result['slice_status']='failed'; result['fatal_error']=traceback.format_exc(); raw_errors.append({'stage':'fatal_slice','error_type':type(e).__name__,'error':str(e),'traceback':traceback.format_exc()[-8000:]})
+          finally:
+              result.update({'duration_seconds':int(time.time()-started),'total_model_calls':total_model_calls,'model_call_failure_count':model_call_failure_count,'parse_failure_count':parse_failure_count,'fallback_to_previous_code_count':fallback_to_previous_code_count,'empty_response_count':empty_response_count,'events':events,'raw_errors':raw_errors,'final_spec_score':result.get('observations',[])[-1]['spec_score'] if result.get('observations') else 0,'final_feature_score':result.get('observations',[])[-1]['feature_score'] if result.get('observations') else 0})
+              safe_model=re.sub(r'[^A-Za-z0-9_.-]+','_',MODEL).strip('_'); stem=f'{safe_model}__seed{SEED}__{TASK}__{STRATEGY}'
+              (outdir/f'{stem}.json').write_text(json.dumps(result,indent=2),encoding='utf-8'); (outdir/f'{stem}.debug.log').write_text('\n'.join(debug_lines)+'\n',encoding='utf-8'); (outdir/f'{stem}.final_code.py').write_text(code,encoding='utf-8')
+              print(json.dumps({'slice_status':result['slice_status'],'final_spec_score':result['final_spec_score'],'final_feature_score':result['final_feature_score'],'model_call_failures':model_call_failure_count,'parse_failures':parse_failure_count,'fallbacks':fallback_to_previous_code_count},indent=2))
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: slice-${{ matrix.artifact_id }}
-          path: slice_result/*.json
-          if-no-files-found: error
+          path: slice_result/*
+          if-no-files-found: warn
 
   aggregate:
     needs: [prepare, slice]
@@ -233,6 +264,7 @@ jobs:
         with:
           persist-credentials: true
       - uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           path: all_slices
           pattern: slice-*
@@ -243,21 +275,21 @@ jobs:
           EXPECTED_SLICES: ${{ needs.prepare.outputs.expected_slices }}
           EXPECTED_OBSERVATIONS: ${{ needs.prepare.outputs.expected_observations }}
         run: |
-          import csv,json,math,os,random,statistics,time
-          from collections import defaultdict
+          import csv,json,math,os,random,statistics,time,traceback,itertools
+          from collections import defaultdict,Counter
           from pathlib import Path
-          profile=os.environ['PROFILE']; run_id=os.environ.get('GITHUB_RUN_ID','local'); expected_slices=int(os.environ['EXPECTED_SLICES']); expected_obs=int(os.environ['EXPECTED_OBSERVATIONS'])
-          rows=[]; slices=[]; examples=[]
-          for p in sorted(Path('all_slices').rglob('*.json')):
-              s=json.loads(p.read_text()); slices.append(s)
-              for o in s.get('observations',[]):
-                  row={'model':s['model'],'seed':s['seed'],'task':s['task'],'strategy':s['strategy'],'horizon':o['horizon'],'legacy_score':o['legacy_score'],'feature_score':o['feature_score'],'hygiene_score':o['hygiene_score'],'spec_score':o['spec_score'],'silent_spec_failure':o['silent_spec_failure'],'strict_feature_pass':o['feature_score']>=0.999,'legacy_regression':o['legacy_score']<0.999,'failure_count':len(o.get('failures',[]))}
-                  rows.append(row)
-                  if o.get('failures') and len(examples)<12:
-                      examples.append({**row,'failures':o.get('failures',[])[:5],'active_requirements':o.get('active_requirements',[]),'code_tail':o.get('code_tail','')[-800:]})
-          def mean(xs): return statistics.mean(xs) if xs else float('nan')
+          profile=os.environ.get('PROFILE') or 'unknown'; run_id=os.environ.get('GITHUB_RUN_ID','local'); expected_slices=int(os.environ.get('EXPECTED_SLICES') or 0); expected_obs=int(os.environ.get('EXPECTED_OBSERVATIONS') or 0)
+          raw_errors=[]; bad_files=[]; slices=[]; rows=[]; examples=[]
+          def profile_dims(profile):
+              if profile == 'smoke': return ['baseline:copy','qwen2.5-coder:1.5b'], [1], ['todo_tags','todo_done_filter'], ['no_anchor'], [1,3,5]
+              if profile == 'core': return ['baseline:copy','qwen2.5-coder:1.5b','qwen2.5-coder:3b'], [1,2,3], ['todo_tags','todo_done_filter','redactor_aws','config_timeout'], ['no_anchor','active_constraints'], [5,10,20]
+              if profile == 'paper': return ['baseline:copy','qwen2.5-coder:0.5b','qwen2.5-coder:1.5b','qwen2.5-coder:3b','qwen2.5-coder:7b','deepseek-coder:1.3b'], [1,2,3,4,5], ['todo_tags','todo_done_filter','redactor_aws','config_timeout','combined_regression'], ['no_anchor','active_constraints','repeated_spec'], [5,10,20,40]
+              return [], [], [], [], []
+          models,seeds,tasks,strategies,horizons=profile_dims(profile); expected_manifest=[{'model':m,'seed':s,'task':t,'strategy':st,'expected_observations':len(horizons),'slice_key':f'{m}|{s}|{t}|{st}'} for m,s,t,st in itertools.product(models,seeds,tasks,strategies)]; expected_keys={x['slice_key'] for x in expected_manifest}
+          def mean(xs):
+              xs=[x for x in xs if isinstance(x,(int,float)) and not math.isnan(x)]; return statistics.mean(xs) if xs else float('nan')
           def ci95(xs,n=800):
-              xs=[x for x in xs if not math.isnan(x)]
+              xs=[x for x in xs if isinstance(x,(int,float)) and not math.isnan(x)]
               if len(xs)<2: return [mean(xs),mean(xs)]
               rng=random.Random(0); vals=[mean([rng.choice(xs) for __ in xs]) for _ in range(n)]; vals.sort(); return [vals[int(.025*n)],vals[int(.975*n)]]
           def summarize(key,metric):
@@ -266,81 +298,108 @@ jobs:
               return {str(k):{'n':len(v),'mean':mean(v),'ci95':ci95(v)} for k,v in sorted(d.items(),key=lambda x:str(x[0]))}
           def summarize_bool(key,metric):
               d=defaultdict(list)
-              for r in rows: d[r[key]].append(1.0 if r[metric] else 0.0)
+              for r in rows: d[r[key]].append(1.0 if r.get(metric) else 0.0)
               return {str(k):{'n':len(v),'rate':mean(v),'ci95':ci95(v)} for k,v in sorted(d.items(),key=lambda x:str(x[0]))}
-          # Baseline-adjusted feature lift for every observation using same seed/task/strategy/horizon.
-          baseline_by_key={(r['seed'],r['task'],r['strategy'],r['horizon']):r['feature_score'] for r in rows if r['model'].startswith('baseline:')}
+          def slope(points, metric):
+              pts=sorted([(float(r['horizon']),float(r[metric])) for r in points], key=lambda x:x[0])
+              if len(pts)<2 or len({x for x,_ in pts})<2: return 0.0
+              xs=[math.log1p(x) for x,_ in pts]; ys=[y for _,y in pts]; mx,my=mean(xs),mean(ys); den=sum((x-mx)**2 for x in xs); return sum((x-mx)*(y-my) for x,y in zip(xs,ys))/den if den else 0.0
+          def classify(first,last,points):
+              fd=last['feature_score']-first['feature_score']; ld=last['legacy_score']-first['legacy_score']; pts=sorted(points,key=lambda r:r['horizon']); swings=[abs(b['spec_score']-a['spec_score']) for a,b in zip(pts,pts[1:])]
+              if swings and max(swings)>0.50: return 'unstable'
+              if last['legacy_score']>=0.90 and last['feature_score']>=0.90: return 'stable_success'
+              if last['legacy_score']>=0.90 and last['feature_score']<0.50 and last.get('silent_spec_failure'): return 'silent_plateau'
+              if fd>0.20 and ld<-0.10: return 'regression_tradeoff'
+              if fd<-0.10 and ld<-0.10: return 'compounding_drift'
+              return 'partial_or_flat'
+          for p in sorted(Path('all_slices').rglob('*.json')):
+              try: s=json.loads(p.read_text())
+              except Exception as e: bad_files.append(str(p)); raw_errors.append({'stage':'aggregate_parse_json','file':str(p),'error_type':type(e).__name__,'traceback':traceback.format_exc()[-4000:]}); continue
+              slices.append(s); sk=f"{s.get('model')}|{s.get('seed')}|{s.get('task')}|{s.get('strategy')}"
+              for o in s.get('observations',[]) or []:
+                  checks=o.get('checks',{}) or {}; row={'model':s.get('model','unknown'),'seed':s.get('seed','unknown'),'task':s.get('task','unknown'),'strategy':s.get('strategy','unknown'),'slice_key':sk,'horizon':o.get('horizon'),'legacy_score':float(o.get('legacy_score',0)),'feature_score':float(o.get('feature_score',0)),'hygiene_score':float(o.get('hygiene_score',0)),'spec_score':float(o.get('spec_score',0)),'silent_spec_failure':bool(o.get('silent_spec_failure')),'strict_feature_pass':float(o.get('feature_score',0))>=0.999,'legacy_regression':float(o.get('legacy_score',0))<0.999,'failure_count':len(o.get('failures',[])),'infra_clean':bool(o.get('infra_clean',True)),'model_call_failure_count_so_far':int(o.get('model_call_failure_count_so_far',0)),'parse_failure_count_so_far':int(o.get('parse_failure_count_so_far',0)),'fallback_to_previous_code_count_so_far':int(o.get('fallback_to_previous_code_count_so_far',0)),'_checks':checks}
+                  rows.append(row); category=None
+                  if (not row['model'].startswith('baseline:')) and row['silent_spec_failure'] and row['infra_clean']: category='nonbaseline_clean_silent_spec_failure'
+                  elif row['legacy_regression'] and not row['model'].startswith('baseline:'): category='nonbaseline_legacy_regression'
+                  elif row['model'].startswith('baseline:') and row['failure_count']: category='baseline_failure'
+                  if category and len([x for x in examples if x.get('category')==category])<8:
+                      ex={k:v for k,v in row.items() if not k.startswith('_')}; ex.update({'category':category,'failures':o.get('failures',[])[:5],'active_requirements':o.get('active_requirements',[]),'code_tail':o.get('code_tail','')[-800:]}); examples.append(ex)
+              for e in s.get('raw_errors',[]) or []: raw_errors.append({'slice_key':sk,**e})
+          observed_keys={f"{s.get('model')}|{s.get('seed')}|{s.get('task')}|{s.get('strategy')}" for s in slices}; missing_keys=sorted(expected_keys-observed_keys); by_key={f"{s.get('model')}|{s.get('seed')}|{s.get('task')}|{s.get('strategy')}":s for s in slices}; slice_manifest=[]
+          for exp in expected_manifest:
+              s=by_key.get(exp['slice_key']); slice_manifest.append({**exp,'artifact_found':bool(s),'slice_status':s.get('slice_status','missing') if s else 'missing','observation_count':len(s.get('observations',[])) if s else 0,'fatal_error':bool(s.get('fatal_error')) if s else False,'model_call_failure_count':s.get('model_call_failure_count',0) if s else 0,'parse_failure_count':s.get('parse_failure_count',0) if s else 0,'fallback_to_previous_code_count':s.get('fallback_to_previous_code_count',0) if s else 0})
+          baseline_by_key={(r['seed'],r['task'],r['strategy'],r['horizon']):r['feature_score'] for r in rows if str(r['model']).startswith('baseline:')}
           for r in rows:
-              r['baseline_matched_feature_score']=baseline_by_key.get((r['seed'],r['task'],r['strategy'],r['horizon']),float('nan'))
-              r['baseline_adjusted_feature_lift']=r['feature_score']-r['baseline_matched_feature_score'] if not math.isnan(r['baseline_matched_feature_score']) else float('nan')
-          baseline_rows=[r for r in rows if r['model'].startswith('baseline:')]; nonbaseline_rows=[r for r in rows if not r['model'].startswith('baseline:')]
-          baseline_feature=[r['feature_score'] for r in baseline_rows]; nonbaseline_feature=[r['feature_score'] for r in nonbaseline_rows]
-          nonbaseline_lift=[r['baseline_adjusted_feature_lift'] for r in nonbaseline_rows if not math.isnan(r['baseline_adjusted_feature_lift'])]
-          feature_delta=mean(nonbaseline_feature)-mean(baseline_feature) if baseline_feature and nonbaseline_feature else float('nan')
-          baseline_contam_tasks=sorted({r['task'] for r in baseline_rows if r['feature_score']>0.0})
-          result={
-            'benchmark':'CodeDriftBench-PublishableEvidence','profile':profile,'run_id':run_id,
-            'expected_slices':expected_slices,'observed_slices':len(slices),'expected_observations':expected_obs,'observed_observations':len(rows),
-            'mean_legacy_score':mean([r['legacy_score'] for r in rows]),'mean_feature_score':mean([r['feature_score'] for r in rows]),'mean_spec_score':mean([r['spec_score'] for r in rows]),
-            'mean_silent_spec_failure_rate':mean([1.0 if r['silent_spec_failure'] else 0.0 for r in rows]),
-            'strict_feature_pass_rate':mean([1.0 if r['strict_feature_pass'] else 0.0 for r in rows]),'legacy_regression_rate':mean([1.0 if r['legacy_regression'] else 0.0 for r in rows]),
-            'baseline_feature_mean':mean(baseline_feature),'nonbaseline_feature_mean':mean(nonbaseline_feature),'feature_delta_over_baseline':feature_delta,
-            'mean_baseline_adjusted_feature_lift':mean(nonbaseline_lift),'baseline_adjusted_feature_lift_ci95':ci95(nonbaseline_lift),
-            'baseline_feature_contamination_tasks':baseline_contam_tasks,'baseline_feature_contamination_rate':mean([1.0 if r['feature_score']>0 else 0.0 for r in baseline_rows]),
-            'spec_ci95':ci95([r['spec_score'] for r in rows]),'feature_ci95':ci95([r['feature_score'] for r in rows]),
-            'model_spec_summary':summarize('model','spec_score'),'model_feature_summary':summarize('model','feature_score'),'model_ssfr_summary':summarize_bool('model','silent_spec_failure'),
-            'model_strict_feature_pass_summary':summarize_bool('model','strict_feature_pass'),'model_legacy_regression_summary':summarize_bool('model','legacy_regression'),
-            'task_feature_summary':summarize('task','feature_score'),'task_spec_summary':summarize('task','spec_score'),'task_ssfr_summary':summarize_bool('task','silent_spec_failure'),
-            'strategy_spec_summary':summarize('strategy','spec_score'),'strategy_feature_summary':summarize('strategy','feature_score'),'strategy_ssfr_summary':summarize_bool('strategy','silent_spec_failure'),
-            'model_strategy_feature_summary':summarize('model','feature_score')
-          }
-          # Richer model x strategy table.
+              r['baseline_matched_feature_score']=baseline_by_key.get((r['seed'],r['task'],r['strategy'],r['horizon']),float('nan')); r['baseline_adjusted_feature_lift']=r['feature_score']-r['baseline_matched_feature_score'] if not math.isnan(r['baseline_matched_feature_score']) else float('nan')
+          baseline_rows=[r for r in rows if str(r['model']).startswith('baseline:')]; nonbaseline_rows=[r for r in rows if not str(r['model']).startswith('baseline:')]; baseline_feature=[r['feature_score'] for r in baseline_rows]; nonbaseline_feature=[r['feature_score'] for r in nonbaseline_rows]; nonbaseline_lift=[r['baseline_adjusted_feature_lift'] for r in nonbaseline_rows if not math.isnan(r['baseline_adjusted_feature_lift'])]; feature_delta=mean(nonbaseline_feature)-mean(baseline_feature) if baseline_feature and nonbaseline_feature else float('nan')
+          baseline_contam_tasks=sorted({r['task'] for r in baseline_rows if r['feature_score']>0.0}); baseline_contam_by_task={t:mean([1.0 if r['feature_score']>0 else 0.0 for r in baseline_rows if r['task']==t]) for t in sorted({r['task'] for r in baseline_rows})}; contam_by_check=defaultdict(int)
+          for r in baseline_rows:
+              for k,v in (r.get('_checks') or {}).items():
+                  if k.startswith('feature_') and v: contam_by_check[k]+=1
+          groups=defaultdict(list)
+          for r in rows: groups[(r['model'],r['seed'],r['task'],r['strategy'])].append(r)
+          trajectory_metrics=[]
+          for (m,se,t,st),pts in sorted(groups.items(), key=lambda x:str(x[0])):
+              pts=sorted(pts,key=lambda r:r['horizon']); first,last=pts[0],pts[-1]
+              rec={'model':m,'seed':se,'task':t,'strategy':st,'n':len(pts),'first_horizon':first['horizon'],'last_horizon':last['horizon'],'first_feature_score':first['feature_score'],'last_feature_score':last['feature_score'],'feature_delta':last['feature_score']-first['feature_score'],'feature_slope':slope(pts,'feature_score'),'first_legacy_score':first['legacy_score'],'last_legacy_score':last['legacy_score'],'legacy_delta':last['legacy_score']-first['legacy_score'],'legacy_slope':slope(pts,'legacy_score'),'first_spec_score':first['spec_score'],'last_spec_score':last['spec_score'],'spec_delta':last['spec_score']-first['spec_score'],'spec_slope':slope(pts,'spec_score'),'ssfr_early':1.0 if first['silent_spec_failure'] else 0.0,'ssfr_late':1.0 if last['silent_spec_failure'] else 0.0,'ssfr_delta':(1.0 if last['silent_spec_failure'] else 0.0)-(1.0 if first['silent_spec_failure'] else 0.0),'feature_auc':mean([p['feature_score'] for p in pts]),'legacy_auc':mean([p['legacy_score'] for p in pts]),'spec_auc':mean([p['spec_score'] for p in pts]),'ssfr_auc':mean([1.0 if p['silent_spec_failure'] else 0.0 for p in pts]),'infra_clean_all':all(p['infra_clean'] for p in pts)}; rec['convergence_class']=classify(first,last,pts); trajectory_metrics.append(rec)
+          def summarize_traj(key,metric):
+              d=defaultdict(list)
+              for r in trajectory_metrics: d[r[key]].append(float(r[metric]))
+              return {str(k):{'n':len(v),'mean':mean(v),'ci95':ci95(v)} for k,v in sorted(d.items(),key=lambda x:str(x[0]))}
+          def class_summary(key=None):
+              d=defaultdict(Counter)
+              for r in trajectory_metrics: d[str(r[key] if key else 'all')][r['convergence_class']]+=1
+              return {k:{cls:{'n':n,'rate':n/(sum(c.values()) or 1)} for cls,n in sorted(c.items())} for k,c in sorted(d.items())}
+          def summarize_horizon(keys):
+              d=defaultdict(list)
+              for r in rows: d[tuple(r[x] for x in keys)].append(r)
+              return {' | '.join(map(str,k)):{'n':len(v),'legacy_mean':mean([x['legacy_score'] for x in v]),'feature_mean':mean([x['feature_score'] for x in v]),'spec_mean':mean([x['spec_score'] for x in v]),'ssfr_rate':mean([1.0 if x['silent_spec_failure'] else 0.0 for x in v]),'infra_clean_rate':mean([1.0 if x['infra_clean'] else 0.0 for x in v])} for k,v in sorted(d.items(),key=lambda x:str(x[0]))}
+          total_calls=sum(int(s.get('total_model_calls',0)) for s in slices); total_call_fail=sum(int(s.get('model_call_failure_count',0)) for s in slices); total_parse_fail=sum(int(s.get('parse_failure_count',0)) for s in slices); total_fallback=sum(int(s.get('fallback_to_previous_code_count',0)) for s in slices); infra_failure_rate=(total_call_fail/total_calls) if total_calls else float('nan'); parse_failure_rate=(total_parse_fail/total_calls) if total_calls else float('nan'); fallback_rate=(total_fallback/total_calls) if total_calls else float('nan'); clean_rows=[r for r in rows if r['infra_clean']]
+          result={'benchmark':'CodeDriftBench-PublishableEvidence','profile':profile,'run_id':run_id,'research_question':'Does specification drift converge, plateau, or compound across repeated code edits?','expected_slices':expected_slices,'observed_slices':len(slices),'missing_slices':len(missing_keys),'missing_slice_keys':missing_keys[:50],'expected_observations':expected_obs,'observed_observations':len(rows),'bad_artifact_files':bad_files,'mean_legacy_score':mean([r['legacy_score'] for r in rows]),'mean_feature_score':mean([r['feature_score'] for r in rows]),'mean_spec_score':mean([r['spec_score'] for r in rows]),'mean_silent_spec_failure_rate':mean([1.0 if r['silent_spec_failure'] else 0.0 for r in rows]),'ssfr_excluding_infra_failures':mean([1.0 if r['silent_spec_failure'] else 0.0 for r in clean_rows]),'strict_feature_pass_rate':mean([1.0 if r['strict_feature_pass'] else 0.0 for r in rows]),'legacy_regression_rate':mean([1.0 if r['legacy_regression'] else 0.0 for r in rows]),'baseline_feature_mean':mean(baseline_feature),'nonbaseline_feature_mean':mean(nonbaseline_feature),'feature_delta_over_baseline':feature_delta,'mean_baseline_adjusted_feature_lift':mean(nonbaseline_lift),'baseline_adjusted_feature_lift_ci95':ci95(nonbaseline_lift),'baseline_feature_contamination_tasks':baseline_contam_tasks,'baseline_feature_contamination_rate':mean([1.0 if r['feature_score']>0 else 0.0 for r in baseline_rows]),'baseline_contamination_by_task':baseline_contam_by_task,'baseline_contamination_by_check':dict(sorted(contam_by_check.items())),'model_call_failure_rate':infra_failure_rate,'parse_failure_rate':parse_failure_rate,'fallback_to_previous_code_rate':fallback_rate,'total_model_calls':total_calls,'spec_ci95':ci95([r['spec_score'] for r in rows]),'feature_ci95':ci95([r['feature_score'] for r in rows]),'model_spec_summary':summarize('model','spec_score'),'model_feature_summary':summarize('model','feature_score'),'model_ssfr_summary':summarize_bool('model','silent_spec_failure'),'model_strict_feature_pass_summary':summarize_bool('model','strict_feature_pass'),'model_legacy_regression_summary':summarize_bool('model','legacy_regression'),'task_feature_summary':summarize('task','feature_score'),'task_spec_summary':summarize('task','spec_score'),'task_ssfr_summary':summarize_bool('task','silent_spec_failure'),'strategy_spec_summary':summarize('strategy','spec_score'),'strategy_feature_summary':summarize('strategy','feature_score'),'strategy_ssfr_summary':summarize_bool('strategy','silent_spec_failure'),'horizon_summary':summarize_horizon(['horizon']),'model_horizon_summary':summarize_horizon(['model','horizon']),'task_horizon_summary':summarize_horizon(['task','horizon']),'strategy_horizon_summary':summarize_horizon(['strategy','horizon']),'trajectory_count':len(trajectory_metrics),'convergence_class_summary':class_summary(),'model_convergence_class_summary':class_summary('model'),'task_convergence_class_summary':class_summary('task'),'strategy_convergence_class_summary':class_summary('strategy'),'model_trajectory_spec_slope_summary':summarize_traj('model','spec_slope') if trajectory_metrics else {},'model_trajectory_feature_delta_summary':summarize_traj('model','feature_delta') if trajectory_metrics else {},'model_trajectory_legacy_delta_summary':summarize_traj('model','legacy_delta') if trajectory_metrics else {}}
           ms=defaultdict(list)
           for r in rows: ms[(r['model'],r['strategy'])].append(r['feature_score'])
           result['model_strategy_feature_summary']={f'{m} | {s}':{'n':len(v),'mean':mean(v),'ci95':ci95(v)} for (m,s),v in sorted(ms.items())}
-          current_gates={'complete_run':len(slices)==expected_slices and len(rows)==expected_obs,'has_baseline':bool(baseline_rows),'enough_nonbaseline_models':len({s['model'] for s in slices if not s['model'].startswith('baseline:')})>=2,'enough_tasks':len({s['task'] for s in slices})>=4,'enough_seeds':len({s['seed'] for s in slices})>=3,'enough_horizons':len({r['horizon'] for r in rows})>=3,'strategy_ablation':len({s['strategy'] for s in slices})>=2,'executable_scoring':True,'reports_uncertainty':True,'feature_signal_over_baseline':feature_delta>=0.05,'baseline_adjusted_lift_positive':mean(nonbaseline_lift)>=0.05,'enough_observations':len(rows)>=200,'separate_metrics_reported':True,'model_ssfr_reported':True,'task_summary_reported':True,'strict_feature_pass_reported':True,'legacy_regression_reported':True,'baseline_contamination_audited':True}
-          paper_gates={**current_gates,'paper_profile':profile=='paper','paper_model_diversity':len({s['model'] for s in slices if not s['model'].startswith('baseline:')})>=4,'paper_task_count':len({s['task'] for s in slices})>=5,'paper_seed_count':len({s['seed'] for s in slices})>=5,'paper_strategy_count':len({s['strategy'] for s in slices})>=3,'paper_observation_count':len(rows)>=1000,'baseline_contamination_below_20pct':result['baseline_feature_contamination_rate']<=0.20}
-          result['core_evidence_package']=all(current_gates.values())
-          result['paper_grade_evidence']=all(paper_gates.values())
-          result['gates']=current_gates; result['paper_grade_gates']=paper_gates
-          if result['paper_grade_evidence']:
-              result['claim_card']='Paper-grade evidence package: passed scale, diversity, separated-metric, baseline-adjusted, and audit gates.'
-          elif result['core_evidence_package']:
-              result['claim_card']='Core evidence package: passed reproducibility, separated-metric, baseline-adjusted, and signal gates. Paper-grade evidence still requires the paper profile and diversity gates.'
-          else:
-              result['claim_card']='Not publishable yet; see failed gates.'
+          current_gates={'complete_run':len(slices)==expected_slices and len(rows)==expected_obs and not missing_keys,'has_baseline':bool(baseline_rows),'enough_nonbaseline_models':len({s.get('model') for s in slices if not str(s.get('model','')).startswith('baseline:')})>=2,'enough_tasks':len({s.get('task') for s in slices})>=4,'enough_seeds':len({s.get('seed') for s in slices})>=3,'enough_horizons':len({r['horizon'] for r in rows})>=3,'strategy_ablation':len({s.get('strategy') for s in slices})>=2,'executable_scoring':True,'reports_uncertainty':True,'feature_signal_over_baseline':feature_delta>=0.05,'baseline_adjusted_lift_positive':mean(nonbaseline_lift)>=0.05,'enough_observations':len(rows)>=200,'separate_metrics_reported':True,'model_ssfr_reported':True,'task_summary_reported':True,'strict_feature_pass_reported':True,'legacy_regression_reported':True,'baseline_contamination_audited':True,'trajectory_metrics_reported':bool(trajectory_metrics),'convergence_classes_reported':bool(result['convergence_class_summary']),'horizon_summary_reported':bool(result['horizon_summary']),'infra_failure_rate_below_2pct':(infra_failure_rate<=0.02 if not math.isnan(infra_failure_rate) else False),'parse_failure_rate_below_2pct':(parse_failure_rate<=0.02 if not math.isnan(parse_failure_rate) else False),'fallback_rate_reported':not math.isnan(fallback_rate),'baseline_contamination_below_10pct':result['baseline_feature_contamination_rate']<=0.10 if not math.isnan(result['baseline_feature_contamination_rate']) else False,'nonbaseline_failure_examples_present':any(e.get('category')=='nonbaseline_clean_silent_spec_failure' for e in examples)}
+          paper_gates={**current_gates,'paper_profile':profile=='paper','paper_model_diversity':len({s.get('model') for s in slices if not str(s.get('model','')).startswith('baseline:')})>=4,'paper_task_count':len({s.get('task') for s in slices})>=5,'paper_seed_count':len({s.get('seed') for s in slices})>=5,'paper_strategy_count':len({s.get('strategy') for s in slices})>=3,'paper_observation_count':len(rows)>=1000,'baseline_contamination_below_20pct':result['baseline_feature_contamination_rate']<=0.20 if not math.isnan(result['baseline_feature_contamination_rate']) else False}
+          result['core_evidence_package']=all(current_gates.values()); result['paper_grade_evidence']=all(paper_gates.values()); result['gates']=current_gates; result['paper_grade_gates']=paper_gates
+          result['claim_card']='Paper-grade convergence evidence package: passed scale, diversity, separated-metric, trajectory, infrastructure, baseline-adjusted, and audit gates.' if result['paper_grade_evidence'] else ('Core convergence evidence package: passed reproducibility, separated-metric, trajectory, infrastructure, baseline-adjusted, and signal gates. Paper-grade evidence still requires the paper profile and diversity gates.' if result['core_evidence_package'] else 'Debug or incomplete run only; evidence claims are invalid until failed gates are addressed.')
           base=Path('results/publishable_evidence')/profile; latest=base/'latest'; run_dir=base/'runs'/run_id
           for d in (latest,run_dir): d.mkdir(parents=True,exist_ok=True)
+          csv_rows=[{k:v for k,v in r.items() if not k.startswith('_')} for r in rows]
+          debug_lines=['# CodeDriftBench Debug Summary','',f'Profile: `{profile}`',f'Run ID: `{run_id}`',f'Observed slices: {len(slices)}/{expected_slices}',f'Missing slices: {len(missing_keys)}',f'Observed observations: {len(rows)}/{expected_obs}',f'Model-call failure rate: {infra_failure_rate}',f'Parse failure rate: {parse_failure_rate}',f'Fallback-to-previous-code rate: {fallback_rate}',f'Bad artifact files: {len(bad_files)}','', '## Failed gates']+[f'- {k}' for k,v in current_gates.items() if not v]
+          if missing_keys: debug_lines += ['', '## Missing slice keys'] + [f'- {x}' for x in missing_keys[:200]]
+          methods=['# CodeDriftBench Methods','', 'This single workflow is the benchmark artifact. It evaluates whether specification drift converges, plateaus, or compounds across repeated executable code edits.','', '## Scores','- legacy_score: old API/behavior preservation','- feature_score: newly requested behavior survival','- hygiene_score: parse/import/dependency hygiene','- spec_score: 0.25*hygiene + 0.35*legacy + 0.40*feature','- silent_spec_failure: legacy_score >= 0.90 and feature_score < 0.50','', '## Convergence classes','- stable_success: late legacy and feature are both high','- silent_plateau: late legacy high, late feature low, SSFR true','- regression_tradeoff: feature improves while legacy declines','- compounding_drift: both feature and legacy decline','- unstable: large step-to-step spec swing','- partial_or_flat: no stronger class applies','', '## Validity gates','Runs always emit debug artifacts. Strong claims require complete slices/observations, low infrastructure failure, low parse failure, baseline contamination audits, and trajectory metrics.']
           for d in (latest,run_dir):
-              (d/'report.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
-              (d/'failure_examples.json').write_text(json.dumps(examples,indent=2),encoding='utf-8')
-              with (d/'observations.csv').open('w',newline='') as f:
-                  w=csv.DictWriter(f,fieldnames=list(rows[0].keys()) if rows else ['model']); w.writeheader(); w.writerows(rows)
-          lines=['# CodeDriftBench Publishable Evidence Report','',f'Profile: `{profile}`',f'Run ID: `{run_id}`',f'Observed slices: **{len(slices)}/{expected_slices}**',f'Observed observations: **{len(rows)}/{expected_obs}**',f'Mean legacy score: **{result["mean_legacy_score"]:.3f}**',f'Mean feature score: **{result["mean_feature_score"]:.3f}**',f'Mean spec score: **{result["mean_spec_score"]:.3f}**',f'Silent spec failure rate: **{result["mean_silent_spec_failure_rate"]:.3f}**',f'Strict feature pass rate: **{result["strict_feature_pass_rate"]:.3f}**',f'Legacy regression rate: **{result["legacy_regression_rate"]:.3f}**',f'Baseline feature mean: **{result["baseline_feature_mean"]:.3f}**',f'Nonbaseline feature mean: **{result["nonbaseline_feature_mean"]:.3f}**',f'Feature delta over baseline: **{result["feature_delta_over_baseline"]:.3f}**',f'Mean baseline-adjusted feature lift: **{result["mean_baseline_adjusted_feature_lift"]:.3f}**',f'Baseline contamination rate: **{result["baseline_feature_contamination_rate"]:.3f}**',f'Core evidence package: **{result["core_evidence_package"]}**',f'Paper-grade evidence: **{result["paper_grade_evidence"]}**','','## Core gates','| Gate | Status |','|---|---:|']
-          for k,v in current_gates.items(): lines.append(f'| {k} | {"PASS" if v else "FAIL"} |')
-          lines += ['','## Paper-grade gates','| Gate | Status |','|---|---:|']
-          for k,v in paper_gates.items(): lines.append(f'| {k} | {"PASS" if v else "FAIL"} |')
-          lines += ['','## Model feature / SSFR summary','| Model | Feature mean | Strict pass | SSFR | Legacy regression |','|---|---:|---:|---:|---:|']
-          for m,s in result['model_feature_summary'].items(): lines.append(f'| {m} | {s["mean"]:.3f} | {result["model_strict_feature_pass_summary"][m]["rate"]:.3f} | {result["model_ssfr_summary"][m]["rate"]:.3f} | {result["model_legacy_regression_summary"][m]["rate"]:.3f} |')
-          lines += ['','## Task summary','| Task | Feature mean | Spec mean | SSFR |','|---|---:|---:|---:|']
-          for t,s in result['task_feature_summary'].items(): lines.append(f'| {t} | {s["mean"]:.3f} | {result["task_spec_summary"][t]["mean"]:.3f} | {result["task_ssfr_summary"][t]["rate"]:.3f} |')
-          lines += ['','## Model x strategy feature summary','| Model | Strategy | Feature mean | CI95 |','|---|---|---:|---|']
-          for key,s in result['model_strategy_feature_summary'].items():
-              m,st=key.split(' | ',1); lines.append(f'| {m} | {st} | {s["mean"]:.3f} | [{s["ci95"][0]:.3f}, {s["ci95"][1]:.3f}] |')
-          lines += ['','## Baseline contamination audit',f'Baseline feature contamination tasks: `{", ".join(baseline_contam_tasks) if baseline_contam_tasks else "none"}`','', '## Claim card',result['claim_card'],'','This report separates legacy, feature, hygiene, and spec scores; reports strict pass rates, regression rates, SSFR by model/task/strategy, baseline-adjusted feature lift, and baseline contamination.']
+              (d/'report.json').write_text(json.dumps(result,indent=2,allow_nan=True),encoding='utf-8'); (d/'failure_examples.json').write_text(json.dumps(examples,indent=2,allow_nan=True),encoding='utf-8'); (d/'raw_errors.json').write_text(json.dumps(raw_errors,indent=2,allow_nan=True),encoding='utf-8'); (d/'debug_summary.md').write_text('\n'.join(debug_lines)+'\n',encoding='utf-8'); (d/'methods.md').write_text('\n'.join(methods)+'\n',encoding='utf-8')
+              with (d/'observations.csv').open('w',newline='',encoding='utf-8') as f: w=csv.DictWriter(f,fieldnames=list(csv_rows[0].keys()) if csv_rows else ['model','seed','task','strategy','horizon']); w.writeheader(); w.writerows(csv_rows)
+              with (d/'trajectory_metrics.csv').open('w',newline='',encoding='utf-8') as f: w=csv.DictWriter(f,fieldnames=list(trajectory_metrics[0].keys()) if trajectory_metrics else ['model','seed','task','strategy','convergence_class']); w.writeheader(); w.writerows(trajectory_metrics)
+              with (d/'slice_manifest.csv').open('w',newline='',encoding='utf-8') as f: w=csv.DictWriter(f,fieldnames=list(slice_manifest[0].keys()) if slice_manifest else ['slice_key']); w.writeheader(); w.writerows(slice_manifest)
+          lines=['# CodeDriftBench Publishable Evidence Report','',f'Profile: `{profile}`',f'Run ID: `{run_id}`',f'Research question: **{result["research_question"]}**',f'Observed slices: **{len(slices)}/{expected_slices}**',f'Observed observations: **{len(rows)}/{expected_obs}**',f'Mean legacy score: **{result["mean_legacy_score"]:.3f}**',f'Mean feature score: **{result["mean_feature_score"]:.3f}**',f'Mean spec score: **{result["mean_spec_score"]:.3f}**',f'Silent spec failure rate: **{result["mean_silent_spec_failure_rate"]:.3f}**',f'SSFR excluding infra failures: **{result["ssfr_excluding_infra_failures"]:.3f}**',f'Strict feature pass rate: **{result["strict_feature_pass_rate"]:.3f}**',f'Legacy regression rate: **{result["legacy_regression_rate"]:.3f}**',f'Baseline feature mean: **{result["baseline_feature_mean"]:.3f}**',f'Nonbaseline feature mean: **{result["nonbaseline_feature_mean"]:.3f}**',f'Feature delta over baseline: **{result["feature_delta_over_baseline"]:.3f}**',f'Mean baseline-adjusted feature lift: **{result["mean_baseline_adjusted_feature_lift"]:.3f}**',f'Baseline contamination rate: **{result["baseline_feature_contamination_rate"]:.3f}**',f'Model-call failure rate: **{result["model_call_failure_rate"]:.3f}**',f'Parse failure rate: **{result["parse_failure_rate"]:.3f}**',f'Fallback-to-previous-code rate: **{result["fallback_to_previous_code_rate"]:.3f}**',f'Core evidence package: **{result["core_evidence_package"]}**',f'Paper-grade evidence: **{result["paper_grade_evidence"]}**','','## Claim card',result['claim_card'],'','## Convergence class summary','| Class | n | rate |','|---|---:|---:|']
+          for cls,info in result['convergence_class_summary'].get('all',{}).items(): lines.append(f'| {cls} | {info["n"]} | {info["rate"]:.3f} |')
+          lines += ['','## Horizon summary','| Horizon | Feature mean | Legacy mean | Spec mean | SSFR | Infra clean |','|---:|---:|---:|---:|---:|---:|']
+          for h,s in result['horizon_summary'].items(): lines.append(f'| {h} | {s["feature_mean"]:.3f} | {s["legacy_mean"]:.3f} | {s["spec_mean"]:.3f} | {s["ssfr_rate"]:.3f} | {s["infra_clean_rate"]:.3f} |')
+          lines += ['','## Core gates','| Gate | Status |','|---|---:|']+[f'| {k} | {"PASS" if v else "FAIL"} |' for k,v in current_gates.items()]
+          lines += ['','## Paper-grade gates','| Gate | Status |','|---|---:|']+[f'| {k} | {"PASS" if v else "FAIL"} |' for k,v in paper_gates.items()]
+          lines += ['','## Baseline contamination audit',f'Baseline feature contamination tasks: `{", ".join(baseline_contam_tasks) if baseline_contam_tasks else "none"}`','','## Debug artifacts','- `debug_summary.md`','- `slice_manifest.csv`','- `raw_errors.json`','- `trajectory_metrics.csv`','- `methods.md`']
           for d in (latest,run_dir): (d/'report.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
           print('\n'.join(lines))
       - name: Commit reports
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp -R results/publishable_evidence /tmp/publishable_evidence
+          if [ -d results/publishable_evidence ]; then
+            cp -R results/publishable_evidence /tmp/publishable_evidence
+          else
+            mkdir -p /tmp/publishable_evidence/${{ needs.prepare.outputs.profile || 'unknown' }}/latest
+            printf '# CodeDriftBench aggregate failed before report generation\n' > /tmp/publishable_evidence/${{ needs.prepare.outputs.profile || 'unknown' }}/latest/report.md
+          fi
           git reset --hard HEAD
           git pull --rebase origin main
           rm -rf results/publishable_evidence
           mkdir -p results
           cp -R /tmp/publishable_evidence results/publishable_evidence
           git add results/publishable_evidence
-          git diff --cached --quiet || { git commit -m "Add hardened CodeDriftBench evidence report $GITHUB_RUN_ID [skip ci]"; git push; }
+          git diff --cached --quiet || { git commit -m "Harden CodeDriftBench convergence evidence workflow $GITHUB_RUN_ID [skip ci]"; git push; }
