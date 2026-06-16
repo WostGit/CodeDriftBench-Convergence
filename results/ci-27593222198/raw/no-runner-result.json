@@ -1,0 +1,12 @@
+{
+  "status": "no_runner",
+  "benchmark": "MitigationBench",
+  "reason": "No benchmark runner found yet.",
+  "expected_runner_1": "python package mitigationbench",
+  "expected_runner_2": "scripts/run_benchmark.sh",
+  "config": "benchmarks/mitigationbench-v1.yaml",
+  "model_group": "ci",
+  "condition": "ci",
+  "commit": "df38b1c972b7ae0aa5a95021cdfd1e93b951d967",
+  "workflow_run_id": "27593222198"
+}
