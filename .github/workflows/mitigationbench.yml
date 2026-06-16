@@ -58,7 +58,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: mitigationbench-${{ github.ref }}-${{ github.event.inputs.run_label || github.run_id }}
+  group: mitigationbench-${{ github.ref }}-${{ github.run_id }}
   cancel-in-progress: false
 
 env:
@@ -165,9 +165,20 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import pathlib, sys, yaml
-          paths = list(pathlib.Path('.github/workflows').glob('*.yml')) + list(pathlib.Path('.github/workflows').glob('*.yaml'))
-          paths += list(pathlib.Path('benchmarks').glob('*.yml')) + list(pathlib.Path('benchmarks').glob('*.yaml')) if pathlib.Path('benchmarks').exists() else []
+          import pathlib
+          import yaml
+
+          paths = []
+          workflow_dir = pathlib.Path('.github/workflows')
+          if workflow_dir.exists():
+              paths.extend(workflow_dir.glob('*.yml'))
+              paths.extend(workflow_dir.glob('*.yaml'))
+
+          benchmark_dir = pathlib.Path('benchmarks')
+          if benchmark_dir.exists():
+              paths.extend(benchmark_dir.glob('*.yml'))
+              paths.extend(benchmark_dir.glob('*.yaml'))
+
           for path in paths:
               with path.open('r', encoding='utf-8') as f:
                   yaml.safe_load(f)
@@ -296,6 +307,11 @@ jobs:
           set -euo pipefail
           mkdir -p results/_manifests
 
+          IMAGES_BUILT=false
+          if [ -f docker-bake.hcl ] || [ -f tools/build_images.py ]; then
+            IMAGES_BUILT=true
+          fi
+
           if [ -f tools/emit_image_manifest.py ]; then
             python tools/emit_image_manifest.py \
               --config "${{ needs.validate.outputs.config_path }}" \
@@ -309,7 +325,7 @@ jobs:
             "registry": "${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}",
             "event": "${{ github.event_name }}",
             "config": "${{ needs.validate.outputs.config_path }}",
-            "images_built": $([ -f docker-bake.hcl ] || [ -f tools/build_images.py ]; echo $?),
+            "images_built": $IMAGES_BUILT,
             "note": "No tools/emit_image_manifest.py found; generated manifest from workflow."
           }
           EOF
@@ -417,12 +433,6 @@ jobs:
               --model-group "${{ needs.validate.outputs.model_group }}" \
               --condition "${{ needs.validate.outputs.condition }}" \
               --output "$RUN_DIR"
-          elif [ -x scripts/run_benchmark.sh ]; then
-            bash scripts/run_benchmark.sh \
-              "${{ needs.validate.outputs.config_path }}" \
-              "${{ needs.validate.outputs.model_group }}" \
-              "${{ needs.validate.outputs.condition }}" \
-              "$RUN_DIR"
           elif [ -f scripts/run_benchmark.sh ]; then
             bash scripts/run_benchmark.sh \
               "${{ needs.validate.outputs.config_path }}" \
